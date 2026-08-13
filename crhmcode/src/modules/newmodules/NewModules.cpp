@@ -32,7 +32,6 @@
 #include "NewModules.h"
 #include "../waterquality/WQ_CRHM.h"
 #include "../waterquality/WQ_Soil_NPCcycling.h"
-#include "../waterquality/WQ_Soil_Null.h"
 #include "../../core/GlobalDll.h"
 #include "../../core/ClassCRHM.h"
 #include "SnobalDefines.h"
@@ -160,10 +159,8 @@
 #include "waterquality/ClassWQ_mass_conc.h"
 #include "waterquality/ClassSed_Soil.h"
 #include "waterquality/ClassSed_SoilX.h"
-#include "waterquality/ClassSed_Detachment.h"
-#include "waterquality/ClassSed_Transport__vr.h"
-#include "waterquality/ClassSed_Transport__vr07.h"
-#include "../ClassRotate_Crop.h" //added by Peter Lawford
+#include "waterquality/ClassSed_overland.h"
+#include "waterquality/ClassSed_channelized.h"
 
 #include "../ClassCRHMCanopyVectorBased.h" //added by Alex Cebulski
 #include "../ClassCanopySnowBalanceBase.h" //added by Alex Cebulski
@@ -299,9 +296,8 @@ void MoveModulesToGlobal(string DLLName)
 
     DLLModules.AddModule(new ClassSedSoil("Sed_Soil", "08/20/22", LMODULE::PROTO));
     DLLModules.AddModule(new ClassSed_SoilX("Sed_SoilX", "08/20/22", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassSed_Detachment("Sed_Detachment", "08/20/22", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassSed_Transport__vr("Sed_Transport", "08/20/22", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassSed_Transport__vr07("Sed_Transport_vr07", "08/20/22", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassSed_Overland("Sed_Overland", "08/20/22", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassSed_Channelized("Sed_Channelized", "08/20/22", LMODULE::PROTO));
     DLLModules.AddModule(new ClassRotate_Crop("Rotate_Crop", "01/16/25", LMODULE::PROTO));
 
     DLLModules.AddModule(new ClassWQ_Netroute("WQ_Netroute", "11/29/18", LMODULE::PROTO));
@@ -311,7 +307,6 @@ void MoveModulesToGlobal(string DLLName)
     DLLModules.AddModule(new ClassWQ_pbsm("WQ_pbsm", "01/21/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_pbsmSnobal("WQ_pbsmSnobal", "04/26/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_SoilBGC("WQ_Soil_BGC", "11/01/19", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassWQ_SoilNull("WQ_Soil_Null", "03/23/04", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_mass_conc("WQ_mass_to_conc", "12/01/18", LMODULE::PROTO));
     DLLModules.AddModule(new ClassGrow_crops_annually("Grow_crops_annually", "05/08/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_Gen_Mass_Var_Netroute("WQ_Gen_Mass_Var_Netroute", "06/20/19", LMODULE::ADVANCE));

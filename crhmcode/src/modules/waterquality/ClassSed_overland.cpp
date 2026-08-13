@@ -1,13 +1,12 @@
 // 11/20/19
 //---------------------------------------------------------------------------
-#pragma hdrstop
 
 //#include <math.h>
 #include <cmath>
 #include <stdlib.h>
 #include <assert.h>     /* assert */
 
-#include "ClassSed_Detachment__modmmf.h"
+#include "ClassSed_overland.h"
 #include "../newmodules/NewModules.h"
 #include "../../core/GlobalDll.h"
 
@@ -18,31 +17,25 @@ using namespace CRHM;
 
 // ********* Extra constants:
 
-double visc = 1.004e-6;  // kinematic viscosity coefficient of water (20C)
-double g = 9.81;  // gravity (m/s2)
-double rho_sed = 2650;  // kg/m3 for quartz
-double rho_w = 1000;  // kg/m3 for water
-double s = rho_sed / rho_w; 
+constexpr double visc = 1.004e-6;  // kinematic viscosity coefficient of water (20C)
+constexpr double g = 9.81;  // gravity (m/s2)
+constexpr double rho_sed = 2650;  // kg/m3 for quartz
+constexpr double rho_w = 1000;  // kg/m3 for water
+constexpr double s = rho_sed / rho_w; 
 
 // bed material sd could be calculated from 0.5 (D84/D50 + D16/D50) if the particle distribution profile was reliable enough
-double bed_material_sd = 2.5;   // (sigma_s) From Van Rijn Suspended transport (84), p. 1630-1631
-double von_Karman = 0.4;  // von Karman constant for clear flow
+constexpr double bed_material_sd = 2.5;   // (sigma_s) From Van Rijn Suspended transport (84), p. 1630-1631
+constexpr double von_Karman = 0.4;  // von Karman constant for clear flow
 //double mannings_n = 0.104;  // check loch et al. 89 for values
-
-// Constants for Van Rijn (suspended transport)
-double MAX_BEDCONC = 0.65;
 
 // *******************
 
-
-
-
-ClassSed_Detachment* ClassSed_Detachment::klone(string name) const{
-  return new ClassSed_Detachment(name);
+ClassSed_Overland* ClassSed_Overland::klone(string name) const{
+  return new ClassSed_Overland(name);
 }
 
 
-void ClassSed_Detachment::decl(void) {
+void ClassSed_Overland::decl(void) {
 
   variation_set = VARIATION_ORG;
 
@@ -60,15 +53,7 @@ void ClassSed_Detachment::decl(void) {
   declgetvar("*", "soil_runoff", "(mm/int)", &soil_runoff);
   declputvar("*", "soil_runoff_mWQ", "(g/m^2/int)", &soil_runoff_mWQ,&soil_runoff_mWQ_lay);
 
-// Consider whether these two should be in separate module ClassWQ_Soil_Null
-  declstatvar("conc_soil_rechr", TDim::NDEFN, "concentration in soil_rechr: (i_no3n=0) NO3-N, (i_nh4n=1) NH4-1, (i_don=2) DON, "
-      "(i_srp=3) SRP, (i_dop=4) DOP, (i_pp=5) PP, (i_oc=6) OC", "(mg/l)", &conc_soil_rechr, &conc_soil_rechr_lay, numsubstances); //
-  declstatvar("conc_soil_lower", TDim::NDEFN, "concentration in soil_lower: (i_no3n=0) NO3-N, (i_nh4n=1) NH4-1, (i_don=2) DON, "
-      "(i_srp=3) SRP, (i_dop=4) DOP, (i_pp=5) PP, (i_oc=6) OC", "(mg/l)", &conc_soil_lower, &conc_soil_lower_lay, numsubstances);
-
-
-
-  declstatvar("sedrelpool", TDim::NHRU, "sediment stored in conceptual storage pool", "(g/int)", &sedrelpool);
+  declstatvar("sedrelpool", TDim::NHRU, "sediment stored in conceptual storage pool", "(g/m^2)", &sedrelpool);
 
 // Vars for the modified MMF formulation
   declstatvar("pct_sand", TDim::NHRU, "Calculated percentage of soil as sand", "(%)", &pct_sand);
@@ -85,20 +70,10 @@ void ClassSed_Detachment::decl(void) {
   declstatvar("DEP_channel_z", TDim::NHRU, "Percentage of silt deposited in runoff channel", "(%)", &DEP_channel_z);
   declstatvar("DEP_channel_s", TDim::NHRU, "Percentage of sand deposited in runoff channel", "(%)", &DEP_channel_s);
 
-// Vars for the vanRijn formulation
-  decllocal(  "sed_diam50",    TDim::NHRU, "nondimensional sediment diameter", "()", &diam50);
-  decllocal(  "sed_diam90",    TDim::NHRU, "nondimensional sediment diameter", "()", &diam90);
-  decllocal(  "sed_diam_nodim",    TDim::NHRU, "nondimensional sediment diameter", "()", &diam_nodim);
-  decllocal(  "sed_tau_crit_nodim",TDim::NHRU, "nondimensional critical shear stress", "()", &tau_crit_nodim);
-  declstatvar("sed_bed_flux",      TDim::NHRU, "sediment bed flux", "(m^3/m/int)", &bed_flux);
-  declstatvar("sed_tau_b_nodim",   TDim::NHRU, "nondimensional bed shear stress", "(Pa)", &tau_b_nodim);
-  declstatvar("sed_tau_b",         TDim::NHRU, "bed shear stress", "(Pa)", &tau_b);
-  declstatvar("sed_stream_depth",  TDim::NHRU, "stream depth", "(m)", &stream_depth);
-
-  declstatvar("mob_rainsplash",  TDim::NHRU, "Rainsplash mobilized sediment", "(m)", &mob_rainsplash);
-  declstatvar("mob_flow",  TDim::NHRU, "Flow mobilized sediment", "(m)", &mob_flow);
-  declstatvar("sed_delivered_z",  TDim::NHRU, "Flow mobilized sediment", "(m)", &sed_delivered_z);
-  declstatvar("sed_transported_z",  TDim::NHRU, "Flow mobilized sediment", "(m)", &sed_transported_z);
+  declstatvar("mob_rainsplash",  TDim::NHRU, "Rainsplash mobilized sediment", "(g/m^2)", &mob_rainsplash);
+  declstatvar("mob_flow",  TDim::NHRU, "Flow mobilized sediment", "(g/m^2)", &mob_flow);
+  declstatvar("sed_delivered_z",  TDim::NHRU, "Flow mobilized sediment", "(g/m^2)", &sed_delivered_z);
+  declstatvar("sed_transported_z",  TDim::NHRU, "Flow mobilized sediment", "(g/m^2)", &sed_transported_z);
 
 
 /*******************
@@ -117,7 +92,13 @@ void ClassSed_Detachment::decl(void) {
   declparam("canopy_cvg", TDim::NHRU, "[0]", "0","100", "Percentage of canopy coverage", "(%)", &canopy_cvg);
   declparam("plant_height", TDim::NHRU, "[1.0]", "0","3", "Plant height", "(m)", &plant_height);
   declparam("ground_cover", TDim::NHRU, "[0.5]", "0","1", "ground cover fraction", "()", &ground_cover);
-  declparam("sfcslope", TDim::NHRU, "[0.0001]", "0","1", "interrill slope angle in radians", "()", &sfcslope);   // CRHM specifies slope in degrees
+  declparam("stones_frac", TDim::NHRU, "[0.5]", "0","1", "stones fraction", "()", &stones_frac);
+
+  declparam("stem_diam", TDim::NHRU, "[0.015]", "0","10", "Stem diameter", "(m)", &stem_diam);
+  declparam("stem_count", TDim::NHRU, "[800]", "0","2000", "Stem count", "(1/m^2)", &stem_count);
+  declparam("tillage_roughness", TDim::NHRU, "[15]", "5","50", "tillage roughness", "()", &RFR);
+
+  declparam("sfcslope", TDim::NHRU, "[0.0001]", "0","1", "interrill slope angle as rise/run", "(m/m)", &sfcslope);
   declparam("slopelen", TDim::NHRU, "[50]", "0","1000", "slope length", "(m)", &slopelen);
 
   decldiagparam("mmf_d_bare",    TDim::BASIN, "[0.005]", "0","1", "mmf_d_bare",    "(m)", &mmf_d_bare);
@@ -125,8 +106,8 @@ void ClassSed_Detachment::decl(void) {
   decldiagparam("mmf_d_actual",  TDim::BASIN, "[0.010]", "0","1", "mmf_d_actual",  "(m)", &mmf_d_actual);
   decldiagparam("mmf_d_tillage", TDim::BASIN, "[0.005]", "0","1", "mmf_d_tillage", "(m)", &mmf_d_tillage);
 
-  decldiagparam("mmf_n_bare",    TDim::BASIN, "[0.015]", "0","1", "mmf_n_bare",    "(m)", &mmf_n_bare);
-  decldiagparam("mmf_n_actual",  TDim::BASIN, "[0.015]", "0","1", "mmf_n_actual",  "(m)", &mmf_n_actual);
+  decldiagparam("mmf_n_bare",    TDim::BASIN, "[0.015]", "0","1", "mmf_n_bare",    "(s·m^{-1/3})", &mmf_n_bare);     // check loch et al. 89 for values of mannings n
+  decldiagparam("mmf_n_actual",  TDim::BASIN, "[0.015]", "0","1", "mmf_n_actual",  "(s·m^{-1/3})", &mmf_n_actual);   // check loch et al. 89 for values of mannings n
 // For tillage, n is calculated from tillage implement roughness table
 //  decldiagparam("mmf_n_tillage", TDim::BASIN, "[0.3]", "0","1", "mmf_n_tillage", "(m)", &mmf_n_tillage);
 
@@ -146,41 +127,27 @@ void ClassSed_Detachment::decl(void) {
   decldiagparam("detachibility_sand", TDim::BASIN, "[1.5]", "0","3", "detachibility of sand", "(g/J)", &detachibility_sand);
 
 //  decldiagparam("mmf_mannings_n", TDim::NHRU, "[0.015]", "0","1", "MMF mannings n", "()", &mmf_mannings_n);
-  decldiagparam("mmf_repr_depth", TDim::NHRU, "[0.005]", "0","0.3", "MMF representative depth", "()", &mmf_repr_depth);
+  decldiagparam("mmf_repr_depth", TDim::NHRU, "[0.005]", "0","0.3", "MMF representative depth", "(m)", &mmf_repr_depth);
 
+
+  declparam("channel_slope", TDim::NHRU, "[0.0001]", "0","10", "slope of the rill channels", "(m/m)", &channel_slope);
 
 // Parameters for the vanRijn formulation
 //  declparam("channel_pct", TDim::NHRU, "[0]", "0","100", "fraction of area containing rills", "()", &channel_pct);
-  declparam("channel_slope", TDim::NHRU, "[0.0001]", "0","10", "slope of the rill channels", "(m/m)", &channel_slope);   // CRHM specifies slope in degrees
-  // check loch et al. 89 for values of mannings n for use in van Rijn
-  declparam("vr_mannings_n", TDim::NHRU, "[0.104]", "0","2", "vanrijn mannings n", "()", &vr_mannings_n);
-  declparam("vr_roughness_height", TDim::NHRU, "[0.1]", "0","2", "vanrijn roughness height", "(m)", &vr_roughness_height);
   declparam("hru_area", TDim::NHRU, "[1]", "1e-6", "1e+09", "hru area.", "(km^2)", &hru_area);
 
-
-
-  declgetvar("*", "net_rain", "(mm)", &net_rain);
-
-  variation_set = VARIATION_1;
-
-  declgetvar("*", "snowmelt_int", "(mm/int)", &snowmelt_int);
-
-  variation_set = VARIATION_2;
-
-  declgetvar("*", "snowmeltD", "(mm/d)", &snowmeltD);
+  declgetvar("*", "net_rain", "(mm/int)", &net_rain);
 
 }
 
 
-void ClassSed_Detachment::init(void) {
-
+void ClassSed_Overland::init(void) {
   initialize_modMMF();
-//  initialize_VANRIJN();
 }
 
 #define SED_CHANNEL 0
 
-void ClassSed_Detachment::run(void) {
+void ClassSed_Overland::run(void) {
     long step = getstep();
     long nstep = step% Global::Freq;
 
@@ -190,19 +157,13 @@ void ClassSed_Detachment::run(void) {
     dayno = julian("now");
 
     for(hh = 0; chkStruct(); ++hh){ // Using inhibit is dangerous
-
-// This is just for testing and verification.
-// WS_outflow_conc should be approximately the same value at outlet
-//        soil_runoff_cWQ_lay[SED_CHANNEL][hh] = 1;   // mg/L
         runoff_sed_by_erosion();
-
-//        soil_runoff_cWQ_lay[SED_CHANNEL][hh] = 0.3;   // mg/L
     }
 
 }
 
 
-void ClassSed_Detachment::finish(bool good) {
+void ClassSed_Overland::finish(bool good) {
 }
 
 
@@ -213,11 +174,7 @@ void ClassSed_Detachment::finish(bool good) {
 ******************************************************************/
 
 
-void ClassSed_Detachment::runoff_sed_by_erosion() {
-    double erodingflow;   // Flow eroding the surface
-
-
-    bed_flux[hh] = 0;   // just for testing
+void ClassSed_Overland::runoff_sed_by_erosion() {
 
     const double erodedSed = calc_erosion();       // total eroded sediment (g/m2)
     assert(erodedSed >= 0);
@@ -247,6 +204,8 @@ void ClassSed_Detachment::runoff_sed_by_erosion() {
         double newSedMass = sedReleased; 
         assert(newSedMass >= 0);
         soil_runoff_mWQ_lay[SED_CHANNEL][hh] = newSedMass;
+    } else {
+      soil_runoff_mWQ_lay[SED_CHANNEL][hh] = 0.0;
     }
 
 }
@@ -259,7 +218,7 @@ void ClassSed_Detachment::runoff_sed_by_erosion() {
 ******************************************************************/
 
 
-constexpr double ClassSed_Detachment::calc_rainsplash_energy(double intensity) {
+double ClassSed_Overland::calc_rainsplash_energy(double intensity_per_int) { 
 
 // From Marshall and Palmer, suitable for North-western Europe
 //    double Kintensity_A = 8.95;
@@ -270,13 +229,15 @@ constexpr double ClassSed_Detachment::calc_rainsplash_energy(double intensity) {
   double Kintensity_A = 11.87;
   double Kintensity_B = 8.73;
 
-  return Kintensity_A + Kintensity_B*log10(intensity);
+  double intensity_per_hour = intensity_per_int * Global::Freq / 24;
+
+  return max(0.0, Kintensity_A + Kintensity_B*log10(intensity_per_hour));
 }
 
 
-void ClassSed_Detachment::calc_rainsplash_mobilization( sed_triple &rslt) {
+void ClassSed_Overland::calc_rainsplash_mobilization( sed_triple &rslt) {
 
-  if(net_rain[hh] <= 5.0/Global::Freq) {     // TODO: shorter timestep, other threshold?
+  if(net_rain[hh] <= 5.0/Global::Freq) {  // 5.0 mm/day minimum for sediment detachment
     rslt.c = 0;
     rslt.z = 0;
     rslt.s = 0;
@@ -301,14 +262,11 @@ void ClassSed_Detachment::calc_rainsplash_mobilization( sed_triple &rslt) {
 
 
 
-void ClassSed_Detachment::calc_flow_mobilization(double runoff, sed_triple &rslt) {  // runoff: mm/int
+void ClassSed_Overland::calc_flow_mobilization(double runoff, sed_triple &rslt) {  // runoff: mm/int
 
-  double common_groundcover = 0.0f;
-
-//TODO: readd stones (ST)
 // CRHM runoff is mm/int, but MMF expects mm/yr (annualized). 
 // This must be accounted since the relationship is non-linear
-  const double imed = pow(runoff*Global::Freq*365, 1.5) * (1-(ground_cover[hh])) * pow(sin(sfcslope[hh]), 0.3) * (1.0-scf[hh]) / (Global::Freq*365);
+  const double imed = pow(runoff*Global::Freq*365, 1.5) * (1-(ground_cover[hh]+stones_frac[hh])) * pow(sfcslope[hh], 0.3) * (1.0-scf[hh]) / (Global::Freq*365);
   rslt.c = detachibility_clay[0] * (pct_clay[hh]/100) * imed;
   rslt.z = detachibility_silt[0] * (pct_silt[hh]/100) * imed;
   rslt.s = detachibility_sand[0] * (pct_sand[hh]/100) * imed;
@@ -319,38 +277,40 @@ void ClassSed_Detachment::calc_flow_mobilization(double runoff, sed_triple &rslt
 
 
 // These functions rely on module parameters (not constexpr)
-double ClassSed_Detachment::calc_flowvel_manning(double depth, double n) {
+double ClassSed_Overland::calc_flowvel_manning(double depth, double n) {
   if (channel_slope[hh] <= 0.0) {
-    CRHMException TExcept("Sed_Detachment: channel slope must be greater than zero", TExcept::TERMINATE);
+    CRHMException TExcept("Sed_overland: channel slope must be greater than zero", TExcept::TERMINATE);
     LogError(TExcept);
   }
   return pow(depth, 0.667) * pow(channel_slope[hh], 0.5) / n;
 }
-double ClassSed_Detachment::calc_flowvel_veg() {
-  // TODO: make this configurable
-  const double stem_diam = 0.015;  // (cm)
-  const double stem_count = 800;  // count per square meter (m-2)
+
+
+double ClassSed_Overland::calc_flowvel_veg(double depth, double n) {
 
   if (sfcslope[hh] <= 0.0) {
-    CRHMException TExcept("Sed_Detachment: surface slope must be greater than zero", TExcept::TERMINATE);
+    CRHMException TExcept("Sed_overland: surface slope must be greater than zero", TExcept::TERMINATE);
     LogError(TExcept);
   }
 
-  // Slope as a rise over run fraction
-  double slope_rr = tan(sfcslope[hh]);
-  return pow(2*g/(stem_diam*stem_count), 0.5) * pow(slope_rr, 0.5);
+// mMMF version of flow velocity with vegetation cover based on Jin et al. 2000
+// stem_diam: (m), stem_count (1/m2)
+//  return pow(2*g/(stem_diam[hh]*stem_count[hh]), 0.5) * pow(sfcslope[hh], 0.5);
+
+// DMMF version of flow velocity with vegetation cover based on Petryk and Bosmajian 1975
+  double modified_n = pow( (n*n + (stem_diam[hh]*stem_count[hh]*pow(depth, 1.33333))/(2*g)) , 0.5);
+  return pow(depth, 0.666667) * pow(sfcslope[hh], 0.5) / modified_n;
 }
-double ClassSed_Detachment::calc_tillage_n() {
-  // TODO: fix this later
-  const double RFR = 15;   // (m/m)
-  return exp(-2.1132 + 0.0349*RFR);
+
+double ClassSed_Overland::calc_tillage_n() {
+  return exp(-2.1132 + 0.0349*RFR[hh]);
 }
 
 
 
-void ClassSed_Detachment::calc_flow_deposition( bool mixed_sed, sed_triple &rslt) {
+void ClassSed_Overland::calc_flow_deposition( bool mixed_sed, double flow_vel, sed_triple &rslt) {
 
-// These values are from Modified MMF paper
+// These values are from Modified MMF paper (Morgan and Duzant 2008)
   const double v_s_c = 2e-6;  // settling velocify for clay (m/s)
   const double v_s_z = 2e-3;  // settling velocity for silt (m/s)
   const double v_s_s = 2e-2;  // settling velocity for sand (m/s)
@@ -367,17 +327,15 @@ multi-particle sediments (Lovell and Rose, 1988; Hogarth et al., 2004).
 */
   const double scl = (mixed_sed) ? 10.0 : 1.0;
 
-  const double imed = slopelen[hh] / (v_std_bare[hh]*mmf_repr_depth[hh]);
+  const double imed = slopelen[hh] / (flow_vel*mmf_repr_depth[hh]);
 
-  //  v_std is that for either the bare soil or vegetated condition
   rslt.c = min(100.0, 44.1 * pow( v_s_c*scl * imed , 0.29 ) );
   rslt.z = min(100.0, 44.1 * pow( v_s_z*scl * imed , 0.29 ) );
   rslt.s = min(100.0, 44.1 * pow( v_s_s*scl * imed , 0.29 ) );
 }
 
 
-
-void ClassSed_Detachment::calc_delivered_to_transport(sed_triple &rslt) {   // g/m2
+void ClassSed_Overland::calc_delivered_to_transport(sed_triple &rslt) {   // g/m2
   static sed_triple detached_rain;
   static sed_triple detached_flow;
 //  static sed_triple deposited_pct;
@@ -393,7 +351,7 @@ void ClassSed_Detachment::calc_delivered_to_transport(sed_triple &rslt) {   // g
 }
 
 
-void ClassSed_Detachment::calc_transport_capacity(sed_triple &rslt) {
+void ClassSed_Overland::calc_transport_capacity(sed_triple &rslt) {
 
 // MMF expects annualized runoff, so scale as appropriate
   const double Q_annual = soil_runoff[hh]*Global::Freq*365;
@@ -410,14 +368,13 @@ void ClassSed_Detachment::calc_transport_capacity(sed_triple &rslt) {
 }
 
 
-void ClassSed_Detachment::calc_mmf_sed_balance(sed_triple &rslt) {   // g/m2
+void ClassSed_Overland::calc_mmf_sed_balance(sed_triple &rslt) {   // g/m2
   static sed_triple delivered;
   static sed_triple transport_cap;
 //  static sed_triple deposited_pct;
 
   calc_delivered_to_transport(delivered);
   calc_transport_capacity(transport_cap);
-//  calc_flow_deposition(true, deposited_pct);  // mixed sed because it occurs in the channel
 
   if (delivered.c <= transport_cap.c) {
     rslt.c = delivered.c;
@@ -442,7 +399,7 @@ void ClassSed_Detachment::calc_mmf_sed_balance(sed_triple &rslt) {   // g/m2
 
 
 
-double ClassSed_Detachment::calc_erosion() {   // g/m2
+double ClassSed_Overland::calc_erosion() {   // g/m2
 
   sed_triple rslt = {0,0,0};
   calc_mmf_sed_balance(rslt);
@@ -451,7 +408,7 @@ double ClassSed_Detachment::calc_erosion() {   // g/m2
 }
 
 
-void ClassSed_Detachment::initialize_modMMF() {
+void ClassSed_Overland::initialize_modMMF() {
   for (long hh = 0; hh < nhru; ++hh) {
     pct_sand[hh] = 100 - (pct_clay[hh] + pct_silt[hh]);
     assert(pct_clay[hh] >= 0);
@@ -460,87 +417,28 @@ void ClassSed_Detachment::initialize_modMMF() {
 
     v_std_bare[hh] = calc_flowvel_manning(mmf_d_bare[0], mmf_n_bare[0]);
     v_actual[hh] = calc_flowvel_manning(mmf_d_actual[0], mmf_n_actual[0]);
-    v_veg[hh] = calc_flowvel_veg();
+    v_veg[hh] = calc_flowvel_veg(mmf_d_bare[0], mmf_n_bare[0]);
     double mmf_n_tillage = calc_tillage_n();
     v_tillage[hh] = calc_flowvel_manning(mmf_d_tillage[0], mmf_n_tillage);
 
+    double v_active;
+    if (stem_count[hh] > 0) {
+      v_active = v_veg[hh];
+    } else {
+      v_active = v_std_bare[hh];
+    }
+
     sed_triple dep_immed;
-    calc_flow_deposition(false, dep_immed);
+    calc_flow_deposition(false, v_active, dep_immed);
     DEP_immed_c[hh] = dep_immed.c;
     DEP_immed_z[hh] = dep_immed.z;
     DEP_immed_s[hh] = dep_immed.s;
 
     sed_triple dep_channel;
-    calc_flow_deposition(true, dep_channel);
+    calc_flow_deposition(true, v_actual[hh], dep_channel);
     DEP_channel_c[hh] = dep_channel.c;
     DEP_channel_z[hh] = dep_channel.z;
     DEP_channel_s[hh] = dep_channel.s;
 
   }
 }
-
-
-/*****************************************************************
- * 
- * Particle-size Distribution Routines (Mozaffari 2022)
- * 
-******************************************************************/
-
-// Very Coarse Sand Independent
-double ClassSed_Detachment::calc_vcsi_diam_percentile(double percentile, double pct_sand, double pct_silt) {
-  double a = 0.088 * pct_silt - 0.255 * pct_sand;   // Mozaffari (2022) Eq. 19
-  double b = a - 0.481 * pct_sand;  // Mozaffari (2022) Eq. 20
-  double c = -0.09*a - 0.3 *b;   // Mozaffari (2022) Eq. 21
-  double d = 100;  // Mozaffari (2022) Eq. 22
-
-  // Solve Mozaffari (2022) Eq. 2 using Newton's Method
-  double diam = 1.0e-6;
-  for (int i=0; i<5; i++) {
-    double f_x = a*pow(log10(diam),3) + b*pow(log10(diam),2) + c*log10(diam) + d - percentile;
-    double df_x = (1/(diam*log(10))) * ( 3*a*pow(log10(diam),2) + 2*b*log10(diam) + c);
-    if (df_x == 0) df_x = 1e-10;
-    diam = diam - f_x/df_x;
-    if (diam > 0.2) diam = 0.2;
-    if (diam < 0.0001) diam = 0.0001;
-  }
-
-  return diam;
-}
-
-
-/*****************************************************************
- * 
- * van Rijn Support Routines
- * 
-******************************************************************/
-
-
-double ClassSed_Detachment::calc_critical_shear_stress_nodim_VANRIJN(double diam_nodim) {
-  double A=0, B=0;  
-
-  if (diam_nodim <= 4) {
-      A = 0.24;
-      B = 1;
-  } else {
-    if (diam_nodim <= 10) {
-      A = 0.14;
-      B = 0.64;
-    } else {
-      if (diam_nodim <= 20) {
-        A = 0.04;
-        B = 0.1;
-      } else {
-        if (diam_nodim <= 150) {
-          A = 0.013;
-          B = 0.29;
-        } else {
-          A = 0.056;
-          B = 0;
-        }
-      }
-    }
-  }
-      
-  return A * pow(diam_nodim, -B);
-}
-

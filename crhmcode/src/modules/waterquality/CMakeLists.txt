@@ -20,12 +20,10 @@ add_library(waterquality OBJECT
 
     ClassSed_Soil.cpp
     ClassSed_SoilX.cpp
-    ClassSed_Detachment.cpp
-    ClassSed_Transport__vr.cpp
-    ClassSed_Transport__vr07.cpp
+    ClassSed_overland.cpp
+    ClassSed_channelized.cpp
     ClassWQ_Substitute_Hype.cpp
     ClassWQ_Test_Hype.cpp
     WQ_CRHM.cpp
     WQ_Soil_NPCcycling.cpp
-    WQ_Soil_Null.cpp
 )

@@ -1,7 +1,7 @@
 // 11/20/19
 //---------------------------------------------------------------------------
-#ifndef Sed_Transport_07
-#define Sed_Transport_07
+#ifndef Sed_Channelized
+#define Sed_Channelized
 //---------------------------------------------------------------------------
 
 #include "../../core/ClassModule.h"
@@ -11,7 +11,7 @@ using namespace std;
 
 
 
-class ClassSed_Transport__vr07 : public ClassModule {
+class ClassSed_Channelized : public ClassModule {
     public:
 
 
@@ -27,10 +27,6 @@ double s = rho_sed / rho_w;
 // bed material sd could be calculated from 0.5 (D84/D50 + D16/D50) if the particle distribution profile was reliable enough
 double bed_material_sd = 2.5;   // (sigma_s) From Van Rijn Suspended transport (84), p. 1630-1631
 double von_Karman = 0.4;  // von Karman constant for clear flow
-//double mannings_n = 0.104;  // check loch et al. 89 for values
-
-// Constants for Van Rijn (suspended transport)
-double MAX_BEDCONC = 0.65;
 
 // beta: coefficient related to vertical structure of velocity profile (van Rijn 1993)
 double diam_sand = 62e-6;  // m
@@ -44,9 +40,9 @@ double bedload_gamma = 0.5;
 
     long dayno{0};
 
-    ClassSed_Transport__vr07(string Name, string Version = "undefined", LMODULE Lvl = LMODULE::PROTO) : ClassModule(Name, Version, Lvl) {};
+    ClassSed_Channelized(string Name, string Version = "undefined", LMODULE Lvl = LMODULE::PROTO) : ClassModule(Name, Version, Lvl) {};
 
-    ClassSed_Transport__vr07* klone(string name) const;
+    ClassSed_Channelized* klone(string name) const;
 
     void decl(void);
     void init(void);
@@ -172,8 +168,8 @@ double bedload_gamma = 0.5;
 
     const long *route_Cshp{ NULL };
     const double *channel_width{ NULL }; // (m)
-    const double *channel_slope{ NULL }; // ()
-    const double *sidewall_angle{ NULL }; // ()
+    const double *channel_slope{ NULL }; // (m/m)
+    const double *sidewall_angle{ NULL }; // (degrees)
     const double *channel_pct{ NULL }; // ()
     const double *vr_mannings_n{ NULL }; // ()
     const double *vr_roughness_height{ NULL }; // (m)
