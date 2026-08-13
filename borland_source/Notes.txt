@@ -719,3 +719,91 @@ CRHM 10/18/24
             et = soil_rechr[hh];
             soil_rechr[hh] = 0.0;
           }
+
+CRHM 03/04/25
+
+  Correcting units description for Rn, RnD, RnD_DOS in netall, evap, evapD, evap_Resist, evapD_Resist, evapX modules
+  Correcting units description for lambda function in evap, evapD, evap_Resist, evapD_Resist, evapX, Canopy, CanopyClearing, CanopyClearingGap modules
+  Correcting description for soil_type parameter in Greencrack, GreenAmpt, SetSoil, Volumetric, evap_Resist, evapD_Resist, evapX modules
+
+CRHM 04/29/25
+
+  Correcting get_ftc_lay() for calculating thermal conductivity using Johansen 1975 equation in XG module as
+
+float ClassXG::get_ftc_lay(long lay){ // unfrozen(thawed) soil to be frozen
+  if(calc_coductivity[hh]){
+    return (soil_solid_km_kw_lay[lay][hh] - soil_solid_km_lay[lay][hh])*sqr(h2o_lay[lay][hh]/(1000.0*por_lay[lay][hh])) + soil_solid_km_lay[lay][hh]; // 29Apr2025 correction: use soil_solid_km_kw_lay
+  }
+  else
+    return (1.0 - por_lay[lay][hh])*soil_solid_km_lay[lay][hh] + h2o_lay[lay][hh]/1000.0*kw + (por_lay[lay][hh] - h2o_lay[lay][hh]/1000.0)*ka;
+}
+
+CRHM 05/07/25
+
+  Correcting Zdt in find_thaw_D for check for thaw front in XG module
+
+	find_thaw_D(Zdt[hh])
+
+
+CRHM 05/16/25
+
+  Correcting No_Freeze if statement for all unfrozen condition in SoilX module.
+
+        if((NO_Freeze[hh] == 1) || (Zd_front_array[0][hh] == 0.0)) // 16May2025: change from if((NO_Freeze[hh] == 0) || (Zd_front_array[0][hh] == 0.0))
+          thaw_layers_lay[ll][hh] = 1.0; // all unfrozen
+
+CRHM 10/15/25
+
+  Add Kochendorfer2017b-SingleAlter option for snowfall undercatch correction in obs module.
+
+  Apply the catchratio up to maximum wind speed that snowfall undercatch correction methods are developed for.
+
+        case 1:  // Nipher
+          if(umean > 8.0) umean = 8;
+          catchratio = 0.01*(-0.387*sqr(umean)-2.022*umean+100.0);
+          if(catchratio < 0.3) catchratio = 0.3;
+
+        break;
+
+        case 2:  // MacDonald-Alter (not correct, use Smith-Alter)
+          catchratio = 1.01*exp(-0.09*umean);
+
+          if(catchratio > 1.0) catchratio = 1.0;
+
+        break;
+
+        case 3:  // Smith-Alter
+          if(hru_u[hh] > 9.5) hru_u[hh] = 9.5;
+
+          if(umean > 9.5) umean = 9.5;
+
+          if(p != NULL)
+            catchratio = 1.18*exp(-0.18*hru_u[hh]);  // for hourly observed wind and precipitation
+          if(ppt != NULL)
+            catchratio = exp(-0.2*umean);  // for daily observed wind and precipitation
+
+          if(catchratio > 1.0) catchratio = 1.0;
+
+        break;
+
+        case 4:  // Kochendorfer2017b-SingleAlter
+          if(hru_u[hh] > 7.2) hru_u[hh] = 7.2;
+          catchratio = 0.728*exp(-0.23*hru_u[hh]) + 0.336; // Kochendorfer2017b transfer function for single-Alter and gauge height wind
+
+          if(catchratio > 1.0) catchratio = 1.0;
+
+        break;
+
+CRHM 03/03/26
+
+  Modifying if statement in ClassSnobalBase::_advec(void)
+
+  if (precip_now[hh]) to replace if (precip_now)
+
+CRHM 07/07/26
+
+  Fixing h2o bug when there is precip in ClassSnobalBase::_precip(void)
+
+  	h2o_total[hh] += h2o[hh] + m_rain[hh];
+
+  Adding CanopySnowBalanceCRHM, CanopyVectorBased, CanopyVectorBasedClearingGap modules

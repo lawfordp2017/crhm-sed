@@ -1,9 +1,10 @@
-// 10/18/24 correcting code order for et and soil_rechr when etr > soil_rechr under case 1 in Soil, SoilX, SoilDS, and SoilPrairie modules in 08/27/24
+// 07/07/26 Fix h2o bug in ClassSnobalBase::_precip, Add CanopySnowBalanceCRHM,
+// CanopyVectorBased, CanopyVectorBasedClearingGap modules in 03/03/26
 //---------------------------------------------------------------------------
 #include <vcl.h>
 #pragma hdrstop
 
-#define CurrentVersion "10/18/24"
+#define CurrentVersion "07/07/26"
 
 #include <stdexcept>
 #include "CRHMmain.h"
