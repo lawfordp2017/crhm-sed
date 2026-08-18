@@ -19,8 +19,14 @@
 //#include "stdafx.h"
 #include "core/CRHMArguments.h"
 
+#include <fenv.h>
+
 int main(int argc, char *argv[])
 {
+#if !(defined(__APPLE__) && defined(__MACH__))
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
+
     //Declare the object for arguments.
     CRHMArguments * arguments = new CRHMArguments();
 
@@ -41,5 +47,4 @@ int main(int argc, char *argv[])
     {
       std::cout << "Error encountered while loading the project. Check log file for more detail.";
     }
-
 }

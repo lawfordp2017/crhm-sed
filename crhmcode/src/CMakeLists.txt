@@ -5,7 +5,6 @@ project(crhm VERSION 1.3)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-#Logging level used by spdlog
 # 0 - Trace
 # 1 - Debug
 # 2 - Info
@@ -37,9 +36,14 @@ if(CMAKE_BUILD_TYPE EQUAL DEBUG)
 endif()
 
 #Debug symbols on in Debug mode
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+# -O0 -fsanitize=address -Warray-bounds=2 -fstack-protector-all")
 #Optimization on for Release mode
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+# Debug and profile in Profile mode
+set(CMAKE_CXX_FLAGS_PROFILE "-g -pg -O0")
+# Optimized, but with debug symbols included for vtune
+set(CMAKE_CXX_FLAGS_FASTDBG "-g -O3")
 
 #Configuration stored in crhmConfig.h
 configure_file(crhmConfig.h.in crhmConfig.h)
@@ -62,6 +66,19 @@ add_subdirectory(core)
 add_subdirectory(modules)
 
 add_dependencies(${PROJECT_NAME} core modules)
+
+# add extra include directories for MacOS homebrew
+# XCode seems to force-add an xcode specific path to break all absolute paths. The line below doesn't work
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "//usr/local/include")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/include")
+
+find_package(Boost REQUIRED)
+if (Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+endif()
+
+target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     config.h

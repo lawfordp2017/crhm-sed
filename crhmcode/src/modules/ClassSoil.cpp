@@ -67,7 +67,7 @@ void ClassSoil::decl(void) {
     declparam("stream_runoff", TDim::NHRU, "[0.0]", "0.0", "1.0", "fraction of stream returned to runoff.", "()", &stream_runoff);
 
 
-    declparam("channel_slope", TDim::NHRU, "[0.002]", "0.0001", "0.01", "soil slope to culvert.", "()", &channel_slope);
+    declparam("channel_slope", TDim::NHRU, "[0.002]", "0.0001", "0.01", "soil slope to culvert.", "(radians)", &channel_slope);
 
     declparam("side_slope", TDim::NHRU, "[0.02]", "0.0001", "0.01", "side soil slope mormal to culvert slope.", "()", &side_slope);
 
@@ -399,7 +399,8 @@ void ClassSoil::init(void) {
         }
 
         if (variation == VARIATION_1) {
-            if (culvert_water_Dmax[hh] / culvert_diam[hh] > 2.5) {
+            if ((number_culverts[hh] > 0) && 
+                            (culvert_water_Dmax[hh] / culvert_diam[hh] > 2.5) ) {
                 string S = "soil: " + string(Name.c_str()) + " ratio of H/D > 2.5 in HRU " + to_string(hh + 1);
                 CRHMException TExcept(S.c_str(), TExcept::WARNING);
                 LogError(TExcept);

@@ -9,11 +9,19 @@ add_library(waterquality OBJECT
     ClassWQ_Gen_Mass_Var_Netroute.cpp
     ClassWQ_Gen_Mass_Var_Soil.cpp
     ClassWQ_mass_conc.cpp
+    ClassWQ_Netroute_D.cpp
     ClassWQ_Netroute_M_D.cpp
     ClassWQ_Netroute.cpp
+    ClassWQ_REWroute.cpp
     ClassWQ_pbsm.cpp
     ClassWQ_pbsmSnobal.cpp
     ClassWQ_Soil.cpp
+    ClassWQ_SoilX.cpp
+
+    ClassSed_Soil.cpp
+    ClassSed_SoilX.cpp
+    ClassSed_overland.cpp
+    ClassSed_channelized.cpp
     ClassWQ_Substitute_Hype.cpp
     ClassWQ_Test_Hype.cpp
     WQ_CRHM.cpp

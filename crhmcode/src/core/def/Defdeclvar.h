@@ -34,6 +34,7 @@ public:
 	string Description;
 	string Units;
 	bool Int;
+	int nlay = 1;
 };
 
 #endif // !DEFDECLVAR

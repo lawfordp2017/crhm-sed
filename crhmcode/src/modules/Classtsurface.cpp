@@ -214,7 +214,8 @@ void Classtsurface::run(void) {
 
         double umin = SWE[hh]*(2.115+0.00779*t_minus)*t_minus/1000.0;
 
-        hru_tsf[hh] = hru_t_D[hh] - (umin*1E6/86400)*snowdepth[hh]/SWE_tc[hh]; // 1E6/86400 is conversion: MJ/m^2*d to W/m^2
+//        hru_tsf[hh] = hru_t_D[hh] - (umin*1E6/86400)*snowdepth[hh]/SWE_tc[hh]; // 1E6/86400 is conversion: MJ/m^2*d to W/m^2
+        hru_tsf[hh] = T_s[hh] - (umin*1E6/86400)*snowdepth[hh]/SWE_tc[hh]; // 1E6/86400 is conversion: MJ/m^2*d to W/m^2
       }
     }
 

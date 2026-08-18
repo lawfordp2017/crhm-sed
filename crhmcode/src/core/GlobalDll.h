@@ -276,7 +276,7 @@ double static StrToDate(string date) {
 	int Day = Strtolong(date.substr(3, 2));
 	int Year = Strtolong(date.substr(6, 4));
 
-	return StandardConverterUtility::EncodeDateTime(Year, Month, Day, 0, 0);
+	return StandardConverterUtility::EncodeDate(Year, Month, Day);
 };
 
 double static StrToTime(string time) {
@@ -284,15 +284,16 @@ double static StrToTime(string time) {
 	int hour = Strtolong(time.substr(0, 2));
 	int min = Strtolong(time.substr(3, 2));
 
-	return StandardConverterUtility::EncodeDateTime(0, 0, 0, hour + 24, min);
+	return StandardConverterUtility::EncodeTime(hour + 24, min, 0, 0);
 };
 
 string static FormatString(double DT, string) {
 	ostringstream temp;
 	temp.width(2);
-	int Y = 0, M = 0, D = 0, H = 0, Min = 0;
+	int Y = 0, M = 0, D = 0; //, H = 0, Min = 0, Sec=0, Milli=0;
 
-	StandardConverterUtility::DecodeDateTime(DT, &Y, &M, &D, &H, &Min);
+	StandardConverterUtility::DecodeDate(DT, Y, M, D);
+//	StandardConverterUtility::DecodeTime(DT, &H, &Min, &Sec, &Milli);
 	temp << Y << " " << M << " " << D;
 
 	return temp.str();
@@ -331,7 +332,7 @@ static void infil_index(double Theta, double SWE, double& Index, double& Pot, co
 	Pot = Pot / infDays;
 }
 
-
+// XXXXXX XXXXXX XXXXXX XXXXX XXXXXX   pore    AIRENT PORESZ XXXXXX
 static double soilproperties[][9] = {
   { 0.0,  999.9, 0.000, 0.00, 1.100,  1.000,	0.000,	0.0,  4},  //      0  water
   { 49.5, 117.8, 0.020, 0.10, 0.437,  0.395,	0.121,	4.05, 1},  //      1  sand
@@ -517,7 +518,7 @@ static void Pbsm(double E_StubHt, double Uthr, double& DriftH, double& SublH,
 	B = PBSM_constants::LATH * PBSM_constants::M / (PBSM_constants::R * Temp) - 1.0;
 
 	// find undersaturation of w. vapour at 2 metres
-	Es = 611.15f * exp(22.452f * (Temp - 273.0f) / Temp);  //{sat pressure}
+	Es = 611.15f * exp(22.452f * (Temp - 273.0f) / Temp);  //{sat pressure over ice}, modified Buck 1981
 	SvDens = (Es * PBSM_constants::M) / (PBSM_constants::R * Temp);                       //{sat density}
 	Sigma2 = rh - 1.0;                              //{undersaturation at 2 m}
 

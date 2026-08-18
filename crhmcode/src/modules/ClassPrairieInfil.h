@@ -52,6 +52,7 @@ const double *hru_area{ NULL };
 const double *fallstat{ NULL };
 const double *Major{ NULL };      // threshold for major melt event(default is 5 mm/day)
 const long* infDays{ NULL }; // maximum number of days of snowmelt infiltration to frozen soil
+const double *maxinfil_prm{ NULL };
 const long  *PriorInfiltration{ NULL };
 const long  *texture{ NULL };
 const long  *groundcover{ NULL };
@@ -59,6 +60,7 @@ const long  *groundcover{ NULL };
 // variable inputs
 const double *hru_tmax{ NULL };
 const double *snowmelt{ NULL };
+const double *snowmeltD{ NULL };
 const double *SWE{ NULL };
 const double *net_rain{ NULL };
 
@@ -72,4 +74,8 @@ void run(void);
 void finish(bool good);
 
 ClassPrairieInfil* klone(string name) const;
+
+private:
+void applyCrack(double RainOnSnow_int);
+
 };

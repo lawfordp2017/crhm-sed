@@ -41,6 +41,7 @@ add_library(modules OBJECT
     ClassGlobal.cpp
     ClassGreenAmpt.cpp
     ClassGreencrack.cpp
+    ClassGreencrack2.cpp
     ClassGrow_Crop.cpp
     ClassHMSA.cpp
     ClassHtobs.cpp
@@ -72,9 +73,10 @@ add_library(modules OBJECT
     ClassPSPnew.cpp
     Classqdrift.cpp
     Classqmelt.cpp
+    ClassQuickroute.cpp
     Classquinton.cpp
+    ClassREWroute_storage.cpp
     ClassREWroute_stream.cpp
-    ClassREWroute.cpp
     ClassREWroute.cpp
     ClassREWroute2.cpp
     ClassRotate_Crop.cpp
@@ -92,6 +94,7 @@ add_library(modules OBJECT
     ClassSoilDS.cpp
     ClassSoilX.cpp
     ClassSWEslope.cpp
+    ClassSWMM.cpp
     ClassTestSparse.cpp
     ClassTs.cpp
     Classtsurface.cpp
@@ -100,7 +103,6 @@ add_library(modules OBJECT
     Classwinter_meltflag.cpp
     ClassXG.cpp
     ClassXGAyers.cpp
-
 )
 
 add_dependencies(modules newmodules waterquality)

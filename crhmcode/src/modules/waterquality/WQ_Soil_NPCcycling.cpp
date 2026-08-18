@@ -46,7 +46,7 @@ const double sreroexp = 1.0; // genpar(double m_sreroexp); surface runoff erosio
 const double filtPbuf  = 1.0; // landpar(double m_filtPbuf, long iluse);
 const double filtPother  = 1.0; // landpar(double m_filtPbuf, long iluse);
 const double filtPinner  = 1.0; // landpar(double m_filtPbuf, long iluse);
-const double pprelmax  = 1.0; // landpar(double m_filtPbuf, long iluse);
+//const double pprelmax  = 100.0; // landpar(double m_filtPbuf, long iluse);
 const double pprelexp  = 1.0; // genpar(double m_filtPbuf, long iluse);
 const double Kfr = 1.0; // model parameter freundlich
 const double Nfr = 1.0; // model parameter freundlichmodel parameter freundlich
@@ -85,6 +85,8 @@ ClassWQ_SoilBGC* ClassWQ_SoilBGC::klone(string name) const{
 void ClassWQ_SoilBGC::decl(void) {
 
   Description = "'Soil biogeochemical cycling module.'";
+
+  variation_set = VARIATION_ORG;
 
   declstatvar("partP", TDim::NDEFN, "immobile/undissolved pool of organic phosphorus adsorded to soil particles.", "(kg/km^2)", &partP, &partP_lay, maxsoillayers);
 
@@ -195,6 +197,8 @@ void ClassWQ_SoilBGC::decl(void) {
 
   declparam("baredayno5", TDim::NHRU, "[0]", "1","366", "winter crops sowing date", "()", &baredayno5);
   */
+
+  declparam("pprelmax", TDim::NHRU, "[100]", "1","1000", "pprelmax", "(mm)", &pprelmax);
 
   declparam("erodibility", TDim::NHRU, "[0]", "0","100", "erodibility", "(g/J)", &erodibility);
 
@@ -346,8 +350,6 @@ void ClassWQ_SoilBGC::decl(void) {
 
   declgetvar("*", "hru_t", "(" + string(DEGREE_CELSIUS) + ")", &hru_t);
 
-  declgetvar("*", "snowmelt_int", "(mm/int)", &snowmelt_int);
-
   declgetvar("*", "SWE", "(mm)", &SWE);
 
   declgetvar("*", "net_rain", "(mm)", &net_rain);
@@ -370,6 +372,15 @@ void ClassWQ_SoilBGC::decl(void) {
 
   declgetparam("*", "soil_rechr_max", "(mm)", &soil_rechr_max);
 
+  declparam("P_is_sediment", TDim::BASIN, "[1]", "0", "1", "Output sediment in the Phosphorus channel", "()", &P_is_sediment);
+
+  variation_set = VARIATION_1;
+
+  declgetvar("*", "snowmelt_int", "(mm/int)", &snowmelt_int);
+
+  variation_set = VARIATION_2;
+
+  declgetvar("*", "snowmeltD", "(mm/d)", &snowmeltD);
 
 }
 
@@ -624,13 +635,14 @@ void ClassWQ_SoilBGC::finish(bool good) {
       }
     } // for
 
-  int Y,M,D, H, Min;
-  StandardConverterUtility::DecodeDateTime(Global::DTnow, &Y, &M, &D, &H, &Min);
+  int Y,M,D, H, Min, Sec, Milli;
+  StandardConverterUtility::DecodeDate(Global::DTnow, Y, M, D);
+  StandardConverterUtility::DecodeTime(Global::DTnow, H, Min, Sec, Milli);
   //Global::DTnow.DecodeDate(&Y,&M,&D);
 
   try{
 
-  long prevdoy = (int)(StandardConverterUtility::EncodeDateTime(Y-1, 12, 31, 0, 0) - StandardConverterUtility::EncodeDateTime(Y-1, 1, 1, 0, 0)) + 1; // calculates #days in previous year
+  long prevdoy = (int)(StandardConverterUtility::EncodeDate(Y-1, 12, 31) - StandardConverterUtility::EncodeDate(Y-1, 1, 1)) + 1; // calculates #days in previous year
 
 // Calculate common fertiliser and manure use (inorg 0, fast 1)   common_nadd[layer][inorg/fast or labile/humus)]
 
@@ -957,12 +969,17 @@ Argument declarations
 
 // Soil moisture dependence factor
 
-    smfcn[0] = moisturefactor(water_lay[0][hh]/watermax_lay[0][hh],
+    if (watermax_lay[0][hh] == 0) {
+      smfcn[0] = 0;
+      smfcn[1] = 0;
+    } else {
+     smfcn[0] = moisturefactor(water_lay[0][hh]/watermax_lay[0][hh],
             wp_lay[0][hh],
             satact, thetapow, thetalow, thetaupp);
-    smfcn[1] = moisturefactor(water_lay[1][hh]/watermax_lay[1][hh],
+      smfcn[1] = moisturefactor(water_lay[1][hh]/watermax_lay[1][hh],
             wp_lay[1][hh],
             satact, thetapow, thetalow, thetaupp);
+    }
 
 // Degradation of refractoryN to labileN
 
@@ -1235,12 +1252,17 @@ Argument declarations
 
   // Soil moisture dependence factor
 
+    if (watermax_lay[0][hh] == 0) {
+      smfcn[0] = 0;
+      smfcn[1] = 0;
+    } else {
       smfcn[0] = moisturefactor(water_lay[0][hh]/watermax_lay[0][hh],
               wp_lay[0][hh],
               satact, thetapow, thetalow, thetaupp);
       smfcn[1] = moisturefactor(water_lay[1][hh]/watermax_lay[1][hh],
               wp_lay[1][hh],
               satact, thetapow, thetalow, thetaupp);
+    }
 
     if(calcN[hh]){
       NO3_Npool_lay[0][hh] = conc_soil_rechr_lay[i_no3n][hh] * water_lay[0][hh]; // soil_lay[soillayer][hru] and conc_lay[substance][soillayer]
@@ -1958,7 +1980,13 @@ void ClassWQ_SoilBGC::runoff_pp_by_erosion(){
     erodingflow = soil_runoff[hh]; // check
     calculate_transport(erodingflow, erodedP);   // calculate amount of PP transported in fast flow paths  (kg/km2)
 
+
     if(soil_runoff[hh] > minFlow_WQ) { // erodedP goes back to soil if no surface runoff
+
+      if (P_is_sediment[0] == 1) {
+        PPrelpool[hh] += erodedP;
+      } else {
+
 
 // Calculate resulting PP concentration of surface runoff
 
@@ -1975,20 +2003,25 @@ void ClassWQ_SoilBGC::runoff_pp_by_erosion(){
 
 // Add PP of tile drainage and surface flow to temporary PP pool
 
-      PPrelpool[hh] = removePP[0] + removeHP[0];   // add sources
+      PPrelpool[hh] += removePP[0] + removeHP[0];   // add sources
 
 // Calculate release from temporary PP pool and new concentrations of the flows;
+      }
 
-      PPrel = std::fmin(PPrelpool[hh], PPrelpool[hh]* soil_runoff[hh]/ pow(pprelmax, pprelexp)); // export
+// Changed this (PRL)      
+      PPrel = std::fmin(PPrelpool[hh], PPrelpool[hh]* pow(soil_runoff[hh]/pprelmax[hh], pprelexp)); // export
+//      PPrel = std::fmin(PPrelpool[hh], PPrelpool[hh]* soil_runoff[hh]/ pow(pprelmax, pprelexp)); // export
+
       PPrelpool[hh] = PPrelpool[hh] - PPrel;
       newppconc = PPrel / soil_runoff[hh];
       soil_runoff_cWQ_lay[i_pp][hh] = newppconc;
       //conc_soil_rechr_lay[i_pp][hh] += newppconc;
       //conc_soil_lower_lay[1][hh] += newppconc;
+
     }
   } // runoff_pp_by_erosion
 
-void ClassWQ_SoilBGC::calculate_erosion(double& erodedP){
+void ClassWQ_SoilBGC::calculate_erosion(double& erodedP) {
 /*  from "npc_soil_proc.f90" called from "soilmodel0.f90" definitions in "modvar.f90"
     USE HYPEVARIABLES, ONLY : bulkdensity
     USE MODVAR, ONLY : 10,     &
@@ -2028,6 +2061,7 @@ void ClassWQ_SoilBGC::calculate_erosion(double& erodedP){
 
     fracminP[hh] = 0.0f;
     erodedP = 0.0f;
+    MobilisedSed = 0.0f;
 
     common_cropcover = 0.0f;
     common_groundcover = 0.0f;
@@ -2143,8 +2177,15 @@ groundcover = gcmax1[hh];
 // Check for snow limiting erosion
 
     intensity = 1.0;    // intenspar;
-    if(snowmelt_int[hh] > 0.0)
-      intensity = 0.0;  // snow
+    if (variation == VARIATION_1) {
+      if(snowmelt_int[hh] > 0.0)
+        intensity = 0.0;  // snow
+    }
+
+    if (variation == VARIATION_2) {
+      if(snowmeltD[hh] > 0.0)
+        intensity = 0.0;  // snow
+    }
 
 // Particles (and attached P) is eroded by rain splash detachment and by overland flow
 
@@ -2158,18 +2199,39 @@ groundcover = gcmax1[hh];
 
         Rainfall_energy = net_rain[hh] * Rainfall_energy;        // J/m2
         MobilisedSed = Rainfall_energy * (1.0 - common_cropcover) * erodibility[hh];  // g/m2
-        MobilisedP = 1.0E-3 * MobilisedSed * ((surfsoil_solub_mWQ_lay[i_pp][hh] + surfsoil_refractoryP_mWQ[hh]) / (soil_Depth[hh] * bulkdensity));    // kgP / km2
+        if (P_is_sediment[0] == 1)
+        {
+          MobilisedP = MobilisedSed;   // Mobilisation due to rainfall
+        } else {
+          MobilisedP = 1.0E-3 * MobilisedSed * ((surfsoil_solub_mWQ_lay[i_pp][hh] + surfsoil_refractoryP_mWQ[hh]) / (soil_Depth[hh] * bulkdensity)); // kgP / km2
+        }
       }
     }
     if(runoff[hh] > 0.0) {
-       MobilisedSed = (((runoff[hh] * 365.0)*exp(sreroexp)) * (1.0 - common_groundcover) * (1.0/(0.5 * cohesion[hh])) * sin(hru_GSL[hh] / 100.)) / 365.0; // g/m2
-       MobilisedP += 1.0E-3 * MobilisedSed * ((surfsoil_solub_mWQ_lay[i_pp][hh] + surfsoil_refractoryP_mWQ[hh]) / (soil_Depth[hh] * bulkdensity));
+//       MobilisedSed = (((runoff[hh] * 365.0)*exp(sreroexp)) * (1.0 - common_groundcover) * (1.0/(0.5 * cohesion[hh])) * sin(hru_GSL[hh] / 100.)) / 365.0; // g/m2
+// Modified (PRL)
+// TODO: temporarily disabled factors for testing. reimplement (PRL)
+//       MobilisedSed = ((pow(runoff[hh] * 365.0, sreroexp)) * (1.0 - common_groundcover) * (1.0/(0.5 * cohesion[hh])) * sin(hru_GSL[hh] / 100.)) / 365.0; // g/m2
+       MobilisedSed = ((pow(runoff[hh], sreroexp)) * (1.0 - common_groundcover) * (1.0/(0.5 * cohesion[hh])) ); // g/m2
+       if (P_is_sediment[0] == 1)
+       {
+         MobilisedP += MobilisedSed;   // Mobilisation due to surface flow
+       }
+       else
+       {
+         MobilisedP += 1.0E-3 * MobilisedSed * ((surfsoil_solub_mWQ_lay[i_pp][hh] + surfsoil_refractoryP_mWQ[hh]) / (soil_Depth[hh] * bulkdensity));
+       }
     }
 
 // Set output variables
 
     erodedP = MobilisedP;      // kg/km2
-    fracminP[hh] = surfsoil_solub_mWQ_lay[i_pp][hh] / (surfsoil_solub_mWQ_lay[i_pp][hh] + surfsoil_refractoryP_mWQ[hh]);
+    double den = (surfsoil_solub_mWQ_lay[i_pp][hh] + surfsoil_refractoryP_mWQ[hh]);
+    if (den == 0) {
+      fracminP[hh] = 0;
+    } else {
+      fracminP[hh] = surfsoil_solub_mWQ_lay[i_pp][hh] / den;
+    }
 
   } // calculate_erosion
 
@@ -2195,6 +2257,12 @@ groundcover = gcmax1[hh];
 
 // Enrichment - finer soil particles are more likely to be eroded and contain more P per weight unit
 
+    if (P_is_sediment[0] == 1)
+      {
+        enrichment = 1.0;
+      }
+  else
+  {
     if(flow > 0.0){
       if(flow > flowstab)
         enrichment = stab;
@@ -2203,11 +2271,15 @@ groundcover = gcmax1[hh];
     }
     else
       enrichment = 0.0;
+  }
 
 // Transport capacity of fast flowing water may limit transport
 
     if(flow > 0.0)
-      transportfactor = std::fmin(1.0, flow/pow(trans1, trans2));
+    // TODO: (PRL) HYPE uses a different equation: fmin(1.0, pow(flow/trans1,trans2))
+    //  transportfactor = std::fmin(1.0, flow / pow(trans1, trans2));  // OLD
+//    transportfactor = std::fmin(1.0, pow(flow / trans1, trans2));
+      transportfactor = 1.0;  //FIXME (PRL)
     else
       transportfactor = 1.0;
 

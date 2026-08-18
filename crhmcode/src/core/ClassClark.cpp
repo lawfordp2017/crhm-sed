@@ -44,8 +44,30 @@ ClassClark::ClassClark(const double* inVar, double* outVar, const double* kstora
 
 	for (long hh = 0; hh < nhru; hh++) {
 
-		c01[hh] = Global::Interval * 0.5 / (kstorage[hh] + Global::Interval * 0.5);  // units of Global::Interval (days)
-		c2[hh] = (kstorage[hh] - Global::Interval * 0.5) / (kstorage[hh] + Global::Interval * 0.5); // units of kstorage (days)
+		if (kstorage[hh] == 0.0) {
+			c01[hh] = 0.0;
+			c2[hh] = 0.0;
+		} else {
+			c01[hh] = Global::Interval * 0.5 / (kstorage[hh] + Global::Interval * 0.5);  // units of Global::Interval (days)
+			c2[hh] = (kstorage[hh] - Global::Interval * 0.5) / (kstorage[hh] + Global::Interval * 0.5); // units of kstorage (days)
+		}
+
+//		printf("%d %f %f\n", hh, c01[hh], c2[hh]);  For debugging (PRL)
+
+        if ( (c01[hh] < 0.0) || (c2[hh] < 0.0) ) {
+            string S = string("Clark constants out of range for HRU=") + to_string(hh) + "(do not set Kstorage <- 0): " +
+						to_string(c01[hh]).c_str() + "  " +
+						to_string(c2[hh]).c_str() + "  " +
+						to_string(kstorage[hh]).c_str() + "\n";
+			// Raising an exception here would put the module into an undefined state maybe					
+//            CRHMException TExcept(S.c_str(), TExcept::WARNING);
+//            LogError(TExcept);
+			printf(S.c_str());
+
+//            CRHMException TExcept(S.c_str(), TExcept::TERMINATE);
+//            LogError(TExcept);
+//            throw TExcept;
+        }
 
 		ilag[hh] = (long)(max<double>(lag[hh], 0.0) / 24.0 * Global::Freq + 1.1); // =1 for lag of zero
 
@@ -95,8 +117,13 @@ double ClassClark::ChangeStorage(const double* kstorage, const long hh)
 
 	double Sstorage = (1.0 / (1.0 - c2[hh])) * (c01[hh] * LastIn[hh] + c2[hh] * outVar[hh]);
 
-	c01[hh] = Global::Interval * 0.5 / (kstorage[hh] + Global::Interval * 0.5);  // units of Global::Interval (days)
-	c2[hh] = (kstorage[hh] - Global::Interval * 0.5) / (kstorage[hh] + Global::Interval * 0.5); // units of kstorage (days)
+	if (kstorage[hh] == 0.0) {
+		c01[hh] = 0.0;
+		c2[hh] = 0.0;
+	} else {
+		c01[hh] = Global::Interval * 0.5 / (kstorage[hh] + Global::Interval * 0.5);  // units of Global::Interval (days)
+		c2[hh] = (kstorage[hh] - Global::Interval * 0.5) / (kstorage[hh] + Global::Interval * 0.5); // units of kstorage (days)
+	}
 
 	if (Sstorage <= 0.0 || Last_c01 == c01[hh]) return 0.0;
 
@@ -170,17 +197,7 @@ double ClassClark::ChangeLag(const double* newlag, const long hh) {
 void ClassClark::DoClark() {
 
 	for (long hh = 0; hh < nhru; hh++) {
-
-		LagArray[hh][ulag[hh]] = inVar[hh] + NO_lag_release[hh];
-		NO_lag_release[hh] = 0.0;
-
-		ulag[hh] = ++ulag[hh] % ilag[hh];
-
-		outVar[hh] = c01[hh] * (LagArray[hh][ulag[hh]] + LastIn[hh]) + c2[hh] * LastOut[hh];
-
-		LastIn[hh] = LagArray[hh][ulag[hh]];
-
-		LastOut[hh] = outVar[hh];
+		DoClark(hh);
 	}
 }
 
@@ -191,7 +208,11 @@ void ClassClark::DoClark(const long hh) {
 
 	ulag[hh] = ++ulag[hh] % ilag[hh];  // now points to fully delayed value
 
-	outVar[hh] = c01[hh] * (LagArray[hh][ulag[hh]] + LastIn[hh]) + c2[hh] * LastOut[hh];
+	if (c01[hh] == 0.0) {
+		outVar[hh] = LagArray[hh][ulag[hh]];
+	} else {
+		outVar[hh] = c01[hh] * (LagArray[hh][ulag[hh]] + LastIn[hh]) + c2[hh] * LastOut[hh];
+	}
 
 	LastIn[hh] = LagArray[hh][ulag[hh]];
 

@@ -52,7 +52,7 @@ public:
 	int Begin; // index to MacroModulesList 'command'
 	int End;   // index to MacroModulesList 'end'
 
-	ClassModule* ObsModule;
+	ClassModule* ObsModule = NULL;
 
 	// declared parameters
 	const double* HRU_group;

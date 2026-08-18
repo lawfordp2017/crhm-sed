@@ -57,6 +57,7 @@
 #include "../Classcrack.h" //added by Manishankar Mondal
 #include "../ClassKevin.h" //added by Manishankar Mondal
 #include "../ClassGreencrack.h" //added by Manishankar Mondal
+#include "../ClassGreencrack2.h" //added by Peter Lawford
 #include "../Classfrostdepth.h" //added by Manishankar Mondal
 #include "../Classfrozen.h" //added by Manishankar Mondal
 #include "../ClassNetroute.h" //added by Manishankar Mondal
@@ -72,6 +73,7 @@
 #include "../Classwalmsley_wind.h" //added by Manishankar Mondal
 #include "../ClassNetroute_M.h" //added by Manishankar Mondal
 #include "../ClassREWroute2.h" //added by Manishankar Mondal
+#include "../ClassREWroute_storage.h"
 #include "../ClassLongVt.h" //added by Manishankar Mondal
 #include "../Classpbsm_M.h" //added by Manishankar Mondal
 #include "../ClassNetroute_D.h" //added by Manishankar Mondal
@@ -131,6 +133,35 @@
 #include "../ClassNOP.h" //added by Manishankar Mondal
 #include "../ClassRotate_Crop.h" //added by Peter Lawford
 
+
+/***********************************
+ * Modules required for simulating water quality
+ ***********************************/
+
+#include "waterquality/ClassWQ_Soil.h"
+#include "waterquality/ClassWQ_SoilX.h"
+#include "waterquality/ClassWQ_Netroute.h"
+#include "waterquality/ClassWQ_pbsm.h"
+#include "waterquality/ClassWQ_Netroute_D.h"
+#include "waterquality/ClassWQ_Netroute_M_D.h"
+#include "waterquality/ClassWQ_REWroute.h"
+#include "waterquality/ClassWQ_Test_Hype.h"
+#include "waterquality/ClassWQ_pbsmSnobal.h"
+#include "waterquality/ClassWQ_Substitute_Hype.h"
+#include "waterquality/ClassWQ_Gen_Mass_Var_Soil.h"
+#include "waterquality/ClassGrow_crops_annually.h"
+#include "waterquality/ClassWQ_Gen_Mass_Var_Netroute.h"
+#include "waterquality/Classlapse_rate_Monthly_Mod.h"
+#include "waterquality/ClassGlacier_melt_debris_cover_estimate_Mod.h"
+#include "waterquality/ClassSoilPrairie.h"
+#include "waterquality/ClassGlacier_debris_cover.h"
+#include "waterquality/Class_lapse_rate_Monthly.h"
+#include "waterquality/ClassWQ_mass_conc.h"
+#include "waterquality/ClassSed_Soil.h"
+#include "waterquality/ClassSed_SoilX.h"
+#include "waterquality/ClassSed_overland.h"
+#include "waterquality/ClassSed_channelized.h"
+
 #include "../ClassCRHMCanopyVectorBased.h" //added by Alex Cebulski
 #include "../ClassCanopySnowBalanceBase.h" //added by Alex Cebulski
 #include "../ClassCanopySnowBalanceCRHM.h" //added by Alex Cebulski
@@ -172,16 +203,16 @@ void MoveModulesToGlobal(string DLLName)
   DLLModules.AddModule(new Classintcp("intcp", "02/24/15", LMODULE::BASIC));
   DLLModules.AddModule(new ClassGrow_Crop("Grow_Crop", "04/04/15", LMODULE::ADVANCE));
   DLLModules.AddModule(new Classcalcsun("calcsun", "10/01/13", LMODULE::BASIC));
-  DLLModules.AddModule(new ClassNO_pbsm("NO_pbsm", "11/15/06", LMODULE::ADVANCE));
+//  DLLModules.AddModule(new ClassNO_pbsm("NO_pbsm", "11/15/06", LMODULE::ADVANCE));
   DLLModules.AddModule(new Classpbsm("pbsm", "11/20/17", LMODULE::BASIC));
-  DLLModules.AddModule(new Classsbsm("sbsm", "10/21/09", LMODULE::ADVANCE));
-  DLLModules.AddModule(new ClassAnnan("Annandale", "07/14/11", LMODULE::ADVANCE));
+  // DLLModules.AddModule(new Classsbsm("sbsm", "10/21/09", LMODULE::ADVANCE));
+  // DLLModules.AddModule(new ClassAnnan("Annandale", "07/14/11", LMODULE::ADVANCE));
   DLLModules.AddModule(new Classebsm("ebsm", "01/18/16", LMODULE::BASIC));
   DLLModules.AddModule(new ClassLongVt("longVt", "04/04/22", LMODULE::ADVANCE));
-  DLLModules.AddModule(new ClassSlope_Qsi("Slope_Qsi", "07/14/11", LMODULE::ADVANCE));
+  // DLLModules.AddModule(new ClassSlope_Qsi("Slope_Qsi", "07/14/11", LMODULE::ADVANCE));
   DLLModules.AddModule(new Classalbedo("albedo", "08/11/11", LMODULE::BASIC));
-  DLLModules.AddModule(new Classnetall("netall", "03/04/25", LMODULE::BASIC));
-  DLLModules.AddModule(new Classevap("evap", "03/04/25", LMODULE::BASIC));
+
+  DLLModules.AddModule(new Classnetall("netall", "04/04/22", LMODULE::BASIC));
   DLLModules.AddModule(new ClassevapD("evapD", "03/04/25", LMODULE::ADVANCE));
   DLLModules.AddModule(new Classevap_Resist("evap_Resist", "03/04/25", LMODULE::ADVANCE));
   DLLModules.AddModule(new ClassevapD_Resist("evapD_Resist", "03/04/25", LMODULE::ADVANCE));
@@ -203,7 +234,6 @@ void MoveModulesToGlobal(string DLLName)
   DLLModules.AddModule(new Classglacier_debris("glacier_debris", "11/22/19", LMODULE::PROTO));
   DLLModules.AddModule(new ClassGlacier_debris_cover("Glacier_debris_cover", "10/17/19", LMODULE::ADVANCE));
   DLLModules.AddModule(new ClassSWEslope("SWESlope", "04/05/22", LMODULE::ADVANCE));
-  DLLModules.AddModule(new ClassICEflow("ICEflow", "12/31/18", LMODULE::ADVANCE));
   DLLModules.AddModule(new ClassNetroute("Netroute", "04/05/22", LMODULE::BASIC));
   DLLModules.AddModule(new ClassNetroute_D("Netroute_D", "04/05/22", LMODULE::ADVANCE));
   DLLModules.AddModule(new ClassNetroute_M("Netroute_M", "04/05/22", LMODULE::ADVANCE));
@@ -243,27 +273,37 @@ void MoveModulesToGlobal(string DLLName)
   DLLModules.AddModule(new ClassK_Estimate("K_Estimate", "04/06/22", LMODULE::ADVANCE)); // fixed 'put' descriptions
   DLLModules.AddModule(new ClassSnobalX("Snobal", "02/03/16", LMODULE::OBSOL));
   DLLModules.AddModule(new Classinterception("interception", "04/05/22", LMODULE::OBSOL));
-  DLLModules.AddModule(new Classlake("lake_evap", "08/02/22", LMODULE::ADVANCE));
+  // DLLModules.AddModule(new Classlake("lake_evap", "08/02/22", LMODULE::ADVANCE));
 
   if(!RELEASE)
   {
-    DLLModules.AddModule(new ClassTestSparse("TestSparse", "05/29/19", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassHMSA("HMSA", "01/16/13", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassIceBulb("IceBulb", "11/20/17", LMODULE::PROTO));
-    DLLModules.AddModule(new Class3D_param("3D_param", "03/18/13", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassMeltRunoff_Lag("MeltRunoff_Lag", "09/03/13", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassMeltRunoff_Kstorage("MeltRunoff_Kstorage", "09/03/13", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassFlowInSnow("FlowInSnow", "08/19/14", LMODULE::PROTO));
-    DLLModules.AddModule(new ClassMod_Exec("Exec", "02/26/14", LMODULE::PROTO));
-    DLLModules.AddModule(new Classcontribution("contribution", "01/29/14", LMODULE::PROTO));
-    DLLModules.AddModule(new Classalbedoobs2("albedo_obs2", "11/18/14", LMODULE::PROTO));
-    DLLModules.AddModule(new Classwinter_meltflag("winter_meltflag", "02/12/15", LMODULE::PROTO));
-    DLLModules.AddModule(new Class_z_s_rho("z_s_and_rho", "04/09/15", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassTestSparse("TestSparse", "05/29/19", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassHMSA("HMSA", "01/16/13", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassIceBulb("IceBulb", "11/20/17", LMODULE::PROTO));
+    // DLLModules.AddModule(new Class3D_param("3D_param", "03/18/13", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassMeltRunoff_Lag("MeltRunoff_Lag", "09/03/13", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassMeltRunoff_Kstorage("MeltRunoff_Kstorage", "09/03/13", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassFlowInSnow("FlowInSnow", "08/19/14", LMODULE::PROTO));
+    // DLLModules.AddModule(new ClassMod_Exec("Exec", "02/26/14", LMODULE::PROTO));
+    // DLLModules.AddModule(new Classcontribution("contribution", "01/29/14", LMODULE::PROTO));
+    // DLLModules.AddModule(new Classalbedoobs2("albedo_obs2", "11/18/14", LMODULE::PROTO));
+    // DLLModules.AddModule(new Classwinter_meltflag("winter_meltflag", "02/12/15", LMODULE::PROTO));
+    // DLLModules.AddModule(new Class_z_s_rho("z_s_and_rho", "04/09/15", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_Test_Hype("WQ_Test", "05/01/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_Substitute_Hype("WQ_Soil_BGC_substitute", "12/11/18", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_Soil("WQ_Soil", "05/08/19", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassWQ_SoilX("WQ_SoilX", "05/08/19", LMODULE::PROTO));
+
+    DLLModules.AddModule(new ClassSedSoil("Sed_Soil", "08/20/22", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassSed_SoilX("Sed_SoilX", "08/20/22", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassSed_Overland("Sed_Overland", "08/20/22", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassSed_Channelized("Sed_Channelized", "08/20/22", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassRotate_Crop("Rotate_Crop", "01/16/25", LMODULE::PROTO));
+
     DLLModules.AddModule(new ClassWQ_Netroute("WQ_Netroute", "11/29/18", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassWQ_Netroute_D("WQ_Netroute_D", "03/22/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_Netroute_M_D("WQ_Netroute_M_D", "03/22/19", LMODULE::PROTO));
+    DLLModules.AddModule(new ClassWQ_REWroute("WQ_REW_route", "05/27/22", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_pbsm("WQ_pbsm", "01/21/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_pbsmSnobal("WQ_pbsmSnobal", "04/26/19", LMODULE::PROTO));
     DLLModules.AddModule(new ClassWQ_SoilBGC("WQ_Soil_BGC", "11/01/19", LMODULE::PROTO));
@@ -272,7 +312,7 @@ void MoveModulesToGlobal(string DLLName)
     DLLModules.AddModule(new ClassWQ_Gen_Mass_Var_Netroute("WQ_Gen_Mass_Var_Netroute", "06/20/19", LMODULE::ADVANCE));
     DLLModules.AddModule(new ClassWQ_Gen_Mass_Var_Soil("WQ_Gen_Mass_Var_Soil", "06/20/19", LMODULE::ADVANCE));
     DLLModules.AddModule(new Classlapse_rate_Monthly_Mod("lapse_rate_Monthly_Mod", "11/22/19", LMODULE::ADVANCE));
-    DLLModules.AddModule(new ClassGlacier_melt_debris_cover_estimate_Mod("Glacier_melt_debris_cover_estimate_Mod", "11/22/19", LMODULE::ADVANCE));
+//    DLLModules.AddModule(new ClassGlacier_melt_debris_cover_estimate_Mod("Glacier_melt_debris_cover_estimate_Mod", "11/22/19", LMODULE::ADVANCE));
   }
 
   DLLModules.AddModel("Prairie using sunshine hours or Qsi generated sunshine hours", "basin, global, obs, calcsun, intcp, pbsm, albedo, netall, ebsm, evap, PrairieInfiltration, Soil, Netroute");

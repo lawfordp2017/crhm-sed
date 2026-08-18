@@ -48,6 +48,12 @@ ClassVar::ClassVar(string module, string name, TDim dimen,
 	if (Grpdim == 0)
 		Grpdim = Global::nhru;
 
+// Allow 'dim' to be overridden as necessary (PRL)
+	if (dimen == TDim::NOBS)
+		dim = Global::nobs;
+	else
+		dim = Grpdim;
+
 	if (dimen == TDim::NLAY)
 		lay = Global::nlay;
 	else if (dimen == TDim::NFREQ) {
@@ -58,6 +64,10 @@ ClassVar::ClassVar(string module, string name, TDim dimen,
 		lay = defdim;
 		dim = 1;
 	}
+	else if (dimen == TDim::NDEF2) {
+		lay = 0;
+		dim = defdim;
+	}
 	else if (dimen == TDim::NDEFN) {
 		lay = defdim;
 		dim = Grpdim;
@@ -67,17 +77,10 @@ ClassVar::ClassVar(string module, string name, TDim dimen,
 	else
 		lay = 0;
 
-	if (dimen == TDim::NOBS)
-		dim = Global::nobs;
-	else
-		dim = Grpdim;
-
 	try {
 		if (varType == TVar::Float) {
 			if (lay > 0) {
 				layvalues = new double* [lay];
-				if (!values)
-					values = new double[dim];
 				if (dimen != TDim::NREB) { // NREB does not own lay memory only HRU memory
 					for (int ii = 0; ii < lay; ii++)
 						layvalues[ii] = new double[dim];
@@ -340,7 +343,7 @@ void ClassVar::ReleaseM(bool Keep) {
 
 		if (lay > 0) {
 			if (dimen != TDim::NREB)
-				values = NULL;
+				values = NULL;    // values was set to layvalues[0] which will be deleted
 
 			if (dimen != TDim::NREB) // NREB does not own lay memory only HRU memory
 				for (int ii = 0; ii < lay; ++ii)

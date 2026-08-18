@@ -164,6 +164,8 @@ CRHMmain* CRHMmain::getInstance()
 
 CRHMmain::CRHMmain(CRHMArguments * arguments)
 {
+	InitModCnt = 0;
+
 	if (arguments == NULL)
 	{
 		//Use default values
@@ -477,7 +479,7 @@ bool CRHMmain::DoPrjOpen(string OpenNamePrj, string PD)
 				for (int ii = 0; ii < 3; ii++)
 					DataFile >> D[ii];
 
-				DT = StandardConverterUtility::EncodeDateTime((int)D[0], (int)D[1], (int)D[2], 0, 0); // check
+				DT = StandardConverterUtility::EncodeDate((int)D[0], (int)D[1], (int)D[2]); // check
 				StartDate = DT;
 
 				int c;
@@ -486,7 +488,14 @@ bool CRHMmain::DoPrjOpen(string OpenNamePrj, string PD)
 					c = DataFile.peek();
 				}
 
-				if (iswdigit(c) && ObsFilesList->size() == 0) {
+//				if (iswdigit(c) && ObsFilesList->size() == 0) {
+				if (iswdigit(c) ) {
+					if (Global::Freq != 0) {
+						CRHMException Except("Timestep has already been set to " + std::to_string(Global::Freq), TExcept::ERR);
+						Common::Message(Except.Message.c_str(),
+							"Timestep has already been set");
+						LogError(Except);
+					}
 					DataFile >> Global::Freq;
 					Global::Interval = 1.0 / Global::Freq;
 				}
@@ -496,7 +505,7 @@ bool CRHMmain::DoPrjOpen(string OpenNamePrj, string PD)
 				for (int ii = 0; ii < 3; ii++)
 					DataFile >> D[ii];
 
-				DT = StandardConverterUtility::EncodeDateTime((int)D[0], (int)D[1], (int)D[2], 0, 0);
+				DT = StandardConverterUtility::EncodeDate((int)D[0], (int)D[1], (int)D[2]);
 				EndDate = DT;
 
 				DataFile >> S;
@@ -546,7 +555,7 @@ bool CRHMmain::DoPrjOpen(string OpenNamePrj, string PD)
 					it++
 					)
 				{
-					string Name = it->first;
+					const string Name = it->first;
 					int jj = Global::AllModulesList->count(Name);
 					if (jj == 0)
 					{
@@ -675,9 +684,9 @@ bool CRHMmain::DoPrjOpen(string OpenNamePrj, string PD)
 									// Added to handle 2D parameters
 									if ((thisPar->param == param) && (thisPar->dim == Cols / thisPar->dim))
 									{
-										break;
+									break;
 									}
-									else
+								else
 									{
 										thisPar = NULL;
 									}
@@ -1007,6 +1016,8 @@ bool CRHMmain::DoPrjOpen(string OpenNamePrj, string PD)
 					}
 					else 
 					{
+						// If an unknown variable is found then processing will halt and the whole project will be corrupt.
+						// Terminate to avoid future errors
 						CRHMException Except("Unknown Variable " + S +
 							" in " + string(OpenNamePrj.c_str()), TExcept::ERR);
 						Common::Message(Except.Message.c_str(),
@@ -1370,7 +1381,7 @@ void  CRHMmain::SqueezeParams(void)
 					thisPar2 = info4->thisPar;
 
 					// check for duplicate values
-					bool match = thisPar->Same(*thisPar2);
+					bool match = thisPar->Same(*thisPar2) && !thisPar->Inhibit_share;
 
 					// if same values indicate could be merged
 					if (match) 
@@ -1859,7 +1870,7 @@ bool  CRHMmain::OpenObsFile(string FileName)
 			setStartDate(FileData->Dt1);
 			setEndDate(FileData->Dt2);
 
-			Global::Interval = FileData->Interval;
+			Global::Interval = FileData->Interval;			
 			Global::Freq = FileData->Freq;
 
 			Global::IndxMin = FileData->IndxMin;
@@ -2193,6 +2204,11 @@ MMSData *  CRHMmain::RunClick2Start()
 #if defined(COMMAND_LINE)
 		string message = "No model output selected";
 		LogMessageX(message.c_str());
+// At this point the model will not be configured correctly so terminate immediately.		
+// (This is a fatal error)
+		CRHMException Except("No model output selected" , TExcept::TERMINATE);
+		LogError(Except);
+		throw Except;
 #endif
 		return mmsdata;  // nothing selected
 	}
@@ -2218,8 +2234,17 @@ MMSData *  CRHMmain::RunClick2Start()
 		LogMessageX(" ");
 	}
 
-	double Dt = StandardConverterUtility::DateTimeDt();
-	Message = string("Time of model run: ") + DttoStr(Dt) + " " + FormatString(Dt, "yy mm dd ") + ". Program " + Version;
+//	double Dt = StandardConverterUtility::DateTimeDt();
+	time_t rawtime;
+	struct tm * timeinfo;
+	char buffer [80];
+
+	time (&rawtime);   // Get the current UNIX timestamp in rawtime
+	timeinfo = localtime (&rawtime);   // Convert UNIX timestamp to Y-M-D-h-m
+	strftime (buffer, 80, "%D %R", timeinfo );  // Convert to string
+//	string datetime(buffer);  // Convert to C++ string
+
+	Message = string("Time of model run: ") + buffer + ". Program " + Version;
 	LogMessageX(Message.c_str());
 
 	string S = string("Module List \"");
@@ -2408,16 +2433,19 @@ MMSData *  CRHMmain::RunClick2Start()
 		Global::OurModulesList->begin()->second->InitReadObs();
 
 		// deletes module allocated storage
-		for (
-			std::list<std::pair<std::string, ClassModule*>>::iterator modIt = Global::OurModulesList->begin();
-			modIt != Global::OurModulesList->end();
-			modIt++
-			)
-		{
-			modIt->second->finish(false);
-		}
+		//// This will be handled by RunClick2End,
+		//// doing 'finish' here will cause double deallocation (PRL)
+		// for (
+		// 	std::list<std::pair<std::string, ClassModule*>>::iterator modIt = Global::OurModulesList->begin();
+		// 	modIt != Global::OurModulesList->end();
+		// 	modIt++
+		// 	)
+		// {
+		// 	modIt->second->finish(false);
+		// }
 
 		Global::BuildFlag = TBuild::DECL;
+		mmsdata->GoodRun = GoodRun;
 		return mmsdata;
 	}
 
@@ -2458,6 +2486,11 @@ MMSData *  CRHMmain::RunClick2Start()
 				mmsData[ii] = thisVar->values + (dim - 1);
 			}
 			else {
+				if (lay <= 0) {
+			        string S = "Display_Variable: "+thisVar->name+" must have a layer specified, I.e. HRU,LAY";;
+					CRHMException TExcept(S.c_str(), TExcept::TERMINATE);
+					LogError(TExcept);
+				}
 				mmsData[ii] = (thisVar->layvalues[lay - 1]) + (dim - 1);
 			}
 		}
@@ -2467,6 +2500,7 @@ MMSData *  CRHMmain::RunClick2Start()
 				mmsDataL[ii] = thisVar->ivalues + (dim - 1);
 			}
 			else {
+				assert(lay > 0);
 				mmsDataL[ii] = (thisVar->ilayvalues[lay - 1]) + (dim - 1);
 			}
 		}
@@ -2779,6 +2813,20 @@ void  CRHMmain::RunClick2Middle(MMSData * mmsdata, long startdate, long enddate)
 		LogError(errorMessage + " (" + FloatToStrF(Global::DTnow, TFloatFormat::ffGeneral, 10, 0) + ")", TExcept::ERR);
 		GoodRun = false;
 	}
+
+	{
+		time_t rawtime;
+		struct tm * timeinfo;
+		char buffer [80];
+
+		time (&rawtime);   // Get the current UNIX timestamp in rawtime
+		timeinfo = localtime (&rawtime);   // Convert UNIX timestamp to Y-M-D-h-m
+		strftime (buffer, 80, "%D %R", timeinfo );  // Convert to string
+	//	string datetime(buffer);  // Convert to C++ string
+
+		string Message = string("Time for completing calculations: ") + buffer;
+		LogMessageX(Message.c_str());
+	}
 }
 
 void CRHMmain::RunClick2End(MMSData * mmsdata)
@@ -2787,8 +2835,16 @@ void CRHMmain::RunClick2End(MMSData * mmsdata)
 	long ** mmsDataL = mmsdata->mmsDataL;
 	bool GoodRun = mmsdata->GoodRun;
 
-	double Dt = StandardConverterUtility::DateTimeDt();
-	string Message = string("End of model run: ") + DttoStr(Dt) + " " + FormatString(Dt, "yy mm dd ") + ". Program " + Version;
+//	double Dt = StandardConverterUtility::DateTimeDt();
+	time_t rawtime;
+	struct tm * timeinfo;
+	char buffer [80];
+
+	time (&rawtime);   // Get the current UNIX timestamp in rawtime
+	timeinfo = localtime (&rawtime);   // Convert UNIX timestamp to Y-M-D-h-m
+	strftime (buffer, 80, "%D %R", timeinfo );  // Convert to string
+
+	string Message = string("End of model run: ") + buffer + ". Program " + Version;
 	LogMessageX(Message.c_str());
 
 	delete[] mmsData;
@@ -2824,6 +2880,7 @@ void CRHMmain::RunClick2End(MMSData * mmsdata)
 
 	}
 
+	ClearModules(true);  // In Borland, ClearModules is called by GUI handling routines. Won't work for CLI runs.
 	//double timediff2 = double(clock() - begintime2) / CLOCKS_PER_SEC; /////////////////////////////////////////////////////
 	//ts->addTime("totaltime", timediff2);
 
@@ -2836,10 +2893,14 @@ void CRHMmain::RunClick2End(MMSData * mmsdata)
 
 void  CRHMmain::RunClick(void) {
 	MMSData * mmsdata = CRHMmain::RunClick2Start();
+	if (!this->cdSeries) {
+		CRHMException TExcept("Failed to properly initialize model", TExcept::TERMINATE);
+		throw TExcept;
+	}
 	CRHMmain::RunClick2Middle(mmsdata, Global::DTmin, Global::DTmax);
 	CRHMmain::RunClick2End(mmsdata);
+	delete mmsdata; 
 }
-
 
 //---------------------------------------------------------------------------
 
@@ -3066,7 +3127,7 @@ void CRHMmain::ReadStateFile(bool & GoodRun)
 	getline(DataFile, Line); // read "TIME:"
 	int D[3]{};
 	DataFile >> D[0] >> D[1] >> D[2];
-	double DT = StandardConverterUtility::EncodeDateTime(D[0], D[1], D[2], 0, 0); // ????
+	double DT = StandardConverterUtility::EncodeDate(D[0], D[1], D[2]); // ????
 
 	getline(DataFile, Descrip);
 	DataFile.ignore((numeric_limits<streamsize>::max)(), '#');
@@ -3678,8 +3739,22 @@ void  CRHMmain::SaveProject(string prj_description, string filepath) {
 	string Output;
 	int Y = 0, M = 0, D = 0, H = 0, Min = 0;
 	ProjectList->push_back(prj_description);
-	double Dt = StandardConverterUtility::GetCurrentDateTime();
-	string datetime = StandardConverterUtility::GetDateTimeInString(Dt);
+
+//	double Dt = StandardConverterUtility::GetCurrentDateTime();
+//	string datetime = StandardConverterUtility::GetDateTimeInString(Dt);
+
+// This uses the UNIX time utilities rather than the reimplemented Borland utilities,
+// avoiding having to convert the current system time to 1899-12-30 offset and back.
+// Also gives more flexibility in formatting the time string.
+	time_t rawtime;
+	struct tm * timeinfo;
+	char buffer [80];
+
+	time (&rawtime);   // Get the current UNIX timestamp in rawtime
+	timeinfo = localtime (&rawtime);   // Convert UNIX timestamp to Y-M-D-h-m
+	strftime (buffer, 80, "%D %R", timeinfo );  // Convert to string
+	string datetime(buffer);  // Convert to C++ string
+
 	//Common::DecodeDateTime(DT, &Y, &M, &D, &H, &Min);
 	//string datest = D +" " + M  + Y + H + Min;
 	string S("  Creation: " + datetime);

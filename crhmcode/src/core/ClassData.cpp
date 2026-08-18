@@ -607,6 +607,9 @@ bool ClassData::DataReadFile(void)
 				else
 				{
 					DataFile >> Data[ii][Position];
+					if ( (Data[ii][Position] > 0.0f) && (Data[ii][Position] < 1e-100)) {
+						printf("ERROR\n");
+					}
 				}
 
 				// handles faulty data
@@ -974,9 +977,11 @@ double ClassData::Encode24(int D[]) {
 
 	try {
 		if (D[3] == 24) // handle 24:00
-			return  StandardConverterUtility::EncodeDateTime(D[0], D[1], D[2], 0, D[4]) + 1;
+			return	StandardConverterUtility::EncodeDate(D[0], D[1], D[2]) + 
+					StandardConverterUtility::EncodeTime(0, D[4], 0, 0) + 1;
 		else
-			return  StandardConverterUtility::EncodeDateTime(D[0], D[1], D[2], D[3], D[4]);
+			return	StandardConverterUtility::EncodeDate(D[0], D[1], D[2]) +
+					StandardConverterUtility::EncodeTime(D[3], D[4], 0, 0);
 	}
 	catch (...)
 	{
