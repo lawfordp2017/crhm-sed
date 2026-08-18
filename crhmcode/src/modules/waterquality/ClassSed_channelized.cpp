@@ -29,14 +29,12 @@ void ClassSed_Channelized::decl(void) {
   variation_set = VARIATION_ORG;
 
 // Vars for the vanRijn formulation
+// This var is determined from silt and clay percentages, so not a parameter
   declstatvar("pct_sand", TDim::NHRU, "Percentage of sand", "(%)", &pct_sand);
 
-  decllocal(  "sed_diam50",    TDim::NHRU, "50th percentile sediment diameter", "()", &diam50);
-  decllocal(  "sed_diam90",    TDim::NHRU, "90th percentile sediment diameter", "()", &diam90);
-//  decllocal(  "sed_diam_nodim",    TDim::NHRU, "nondimensional sediment diameter", "()", &diam_nodim);
   decllocal(  "sed_tau_crit_nodim",TDim::NHRU, "nondimensional critical shear stress", "()", &tau_crit_nodim);
   declstatvar("sed_bed_flux",      TDim::NHRU, "sediment bed flux", "(m^3/m/int)", &bed_flux);
-  declstatvar("sed_tau_b_nodim",   TDim::NHRU, "nondimensional bed shear stress", "(Pa)", &tau_b_nodim);
+  declstatvar("sed_tau_b_nodim",   TDim::NHRU, "nondimensional bed shear stress", "()", &tau_b_nodim);
   declstatvar("sed_tau_b",         TDim::NHRU, "bed shear stress", "(Pa)", &tau_b);
   declstatvar("sed_stream_depth",  TDim::NHRU, "stream depth", "(m)", &stream_depth);
   declstatvar("sed_stream_width",  TDim::NHRU, "stream width", "(m)", &stream_width);
@@ -45,16 +43,18 @@ void ClassSed_Channelized::decl(void) {
   declstatvar("sedvr_bedload_mass",         TDim::NHRU, "bedload mass flux", "(kg/s)", &mass_bedload);
   declstatvar("sedvr_outflow_mWQ",  TDim::NDEFN, "van Rijn total mass flux", "(g/int)", &sedvr_outflow_mWQ, &sedvr_outflow_mWQ_lay);
 
-// Parameters for the vanRijn formulation
+/*******************
+ * PARAMETERS
+ *******************/
 
   declparam("pct_clay", TDim::NHRU, "[10]", "0","100", "Percentage clay", "(%)", &pct_clay);
   declparam("pct_silt", TDim::NHRU, "[40]", "0","100", "Percentage silt", "(%)", &pct_silt);
 
 //  declparam("channel_pct", TDim::NHRU, "[0]", "0","100", "fraction of area containing rills", "()", &channel_pct);
   declparam("channel_width", TDim::NHRU, "[0.1]", "0.1","10", "width of rill channels", "(m)", &channel_width);   // CRHM specifies slope in degrees
-  declparam("channel_slope", TDim::NHRU, "[0.0001]", "0","10", "slope of the channels", "(m/m)", &channel_slope);   // CRHM specifies slope in degrees
+  declparam("channel_slope", TDim::NHRU, "[0.001]", "0","10", "slope of the channels", "(m/m)", &channel_slope);   // CRHM specifies slope in degrees
 
-  declparam("Channel_shp", TDim::NHRU, "[0]", "0", "2", "rectangular - 0/parabolic - 1/triangular - 2", "()", &route_Cshp);
+  declparam("channel_shp", TDim::NHRU, "[0]", "0", "2", "rectangular - 0/parabolic - 1/triangular - 2", "()", &route_Cshp);
 
 // sidewall angle is in degrees, used if v-channel shape is specified
   declparam("sidewall_angle", TDim::NHRU, "[10]", "0","90", "anglular slope of the channel sidewalls for triangular channels", "(degrees)", &sidewall_angle);   // CRHM specifies slope in degrees
@@ -86,7 +86,6 @@ void ClassSed_Channelized::decl(void) {
   declgetvar("*", "outflow", "(m^3/int)", &outflow);
   declputvar("*", "outflow_mWQ", "(g/int)", &outflow_mWQ, &outflow_mWQ_lay);
 
-
 }
 
 
@@ -104,6 +103,13 @@ void ClassSed_Channelized::run(void) {
   long Sub = 0;
 
   for (hh = 0; chkStruct(); ++hh) {  // hh is object scope
+    double outflow_t;
+    if (variation_set == VARIATION_2) {
+      outflow_t = outflow[hh];          // from mm*km2/int
+    } else {
+      outflow_t = outflow[hh] / 1000;   // from m3/int    
+    }
+    
     double vr_massflux = calc_vr_load_transport(outflow[hh]);   // g/int
     outflow_mWQ_lay[Sub][hh] = Nf[hh]*vr_massflux + (1.0-Nf[hh])*outflow_mWQ_lay[Sub][hh];
     sedvr_outflow_mWQ_lay[Sub][hh] = vr_massflux;   // For debugging
@@ -221,6 +227,7 @@ double ClassSed_Channelized::calc_flowdepth_from_manning__rect(double flow_rate)
   double S = channel_slope[hh];   // tan(channel_slope[hh]);
   double base = flow_rate * vr_mannings_n[hh] / (sqrt(S) * channel_width[hh]);
   double h = pow ( base, 3.0/5.0 );
+  printf("%f %f %f %f %f %f\n", S, base, h, flow_rate, channel_width[hh], vr_mannings_n[hh]);
 
   return h;
 }    
@@ -254,14 +261,12 @@ double ClassSed_Channelized::calc_flowwidth_from_flowdepth__Vchannel(double flow
 
 // This is stream load per unit of stream width (kg/s/m)
 double ClassSed_Channelized::calc_bedload_transport_cap_eq10(
-  double streamvel,   // m/s
+  double diam50_t,      // m
+  double diam90_t,      // m
+  double streamvel,     // m/s
   double streamwidth,   // m
   double streamdepth)   // m
-   {  // runoff: mm * km^2/int
-
-  double diam90_t = diam90[hh];
-  double diam50_t = diam50[hh];
-
+{  // runoff: mm * km^2/int
   double f_silt = max(1.0, diam_sand/diam50_t);
   
   double k_s_grain = 3*diam90_t;
@@ -291,6 +296,8 @@ double ClassSed_Channelized::calc_bedload_transport_cap_eq10(
 
 
 double ClassSed_Channelized::calc_mobility_parameter( 
+  double diam50_t,
+  double diam90_t,
   double streamvel,   // m/s
   double streamdepth)   // m
 // returns: mobbility parameter > 0, or 0 if no mobilization
@@ -298,7 +305,7 @@ double ClassSed_Channelized::calc_mobility_parameter(
   double u_crit_t;
 
   if (u_crit[hh] == 0.0) {
-    u_crit_t = calc_critical_velocity(diam50[hh], diam90[hh], streamdepth); 
+    u_crit_t = calc_critical_velocity(diam50_t, diam90_t, streamdepth); 
   } else {
     u_crit_t = u_crit[hh];
   }
@@ -310,7 +317,7 @@ double ClassSed_Channelized::calc_mobility_parameter(
   if (streamvel < u_crit_t)
     return 0.0;
 
-  double M_e = (streamvel - u_crit_t) / sqrt((s - 1) * g * diam50[hh]);  
+  double M_e = (streamvel - u_crit_t) / sqrt((s - 1) * g * diam50_t);  
 
   return M_e;
 }
@@ -318,16 +325,18 @@ double ClassSed_Channelized::calc_mobility_parameter(
 
 // This is stream load per unit of stream width (kg/s/m)
 double ClassSed_Channelized::calc_bedload_transport_cap_eq12(
+  double diam50_t,
+  double diam90_t,
   double streamvel,   // m/s
   double streamwidth,   // m
   double streamdepth)   // m
 {  // runoff: mm * km^2/int
 
-  double M_e = calc_mobility_parameter(streamvel, streamdepth);
+  double M_e = calc_mobility_parameter(diam50_t, diam90_t, streamvel, streamdepth);
   if (M_e <= 0) {
     return 0;
   }
-  return 0.015 * rho_sed * streamvel * streamdepth * pow( (diam50[hh]/streamdepth), 1.2) * pow(M_e, 1.5);
+  return 0.015 * rho_sed * streamvel * streamdepth * pow( (diam50_t/streamdepth), 1.2) * pow(M_e, 1.5);
 }
 
 
@@ -338,27 +347,33 @@ double ClassSed_Channelized::calc_bedload_transport_cap_eq12(
 
 // This is stream load per unit of stream width (kg/s/m)
 double ClassSed_Channelized::calc_suspended_transport_cap(
-  double streamvel,   // m/s
+  double diam50_t,        // m
+  double diam90_t,        // m
+  double streamvel,     // m/s
   double streamwidth,   // m
   double streamdepth)   // m
 {
-  double M_e = calc_mobility_parameter(streamvel, streamdepth);
+  double M_e = calc_mobility_parameter(diam50_t, diam90_t, streamvel, streamdepth);
   if (M_e <= 0) {
     //    printf("below thresh %f %f\n", streamvel, u_crit_t);
     return 0;
   }
 
-  double diam_nodim = calc_nodim_diam(diam50[hh]);
+  double diam_nodim = calc_nodim_diam(diam50_t);
   return 0.012 * rho_sed *
-         streamvel * diam50[hh] * pow(M_e, 2.4) * pow(diam_nodim, -0.6);
+         streamvel * diam50_t * pow(M_e, 2.4) * pow(diam_nodim, -0.6);
 }
+
+// clay [< 0.002 mm], silt [0.002 mm to 0.05 mm], sand [0.05 mm to 2mm]
+const double diam50_groups[3] = {1e-6, 1.1e-5, 2.5e-4};   // m
+const double diam90_groups[3] = {1.8e-6, 5e-5, 1e-3};   // m
 
 
 // returns total sediment load (g/int)
-double ClassSed_Channelized::calc_vr_load_transport(double streamflow ) {
-  if (streamflow <= 0) return 0;  // Protect against spurious input values
+double ClassSed_Channelized::calc_vr_load_transport(double streamflow__m3_int ) {
+  if (streamflow__m3_int <= 0) return 0;  // Protect against spurious input values
 
-  double flow_rate = streamflow * 1000 * Global::Freq / 86400.0;  // mm*km^2/int -> m^3/s
+  double flow_rate = streamflow__m3_int * Global::Freq / 86400.0;  // mm*km^2/int -> m^3/s
 
   double streamdepth;
   double streamwidth;
@@ -391,19 +406,25 @@ double ClassSed_Channelized::calc_vr_load_transport(double streamflow ) {
   //  double streamwidth = channel_width[hh];
   double streamvel = flow_rate/streamarea;
 
-  // kg/m3 * m(width) * [m3/s / m (width)]
-  mass_suspended[hh] = streamwidth * calc_suspended_transport_cap(streamvel, streamwidth, streamdepth);  // kg/s
+  mass_suspended[hh] = 0;
+  mass_bedload[hh] = 0;
+  double fraction_groups[3] = {pct_clay[hh]/100.0, pct_silt[hh]/100.0, pct_sand[hh]/100.0};
+  for (int size_group=0; size_group < 3; size_group++) {
 
-  // The 'per meter' in q_bedload is per unit width of channel (cross-section)
-  double q_bedload_eq12 = calc_bedload_transport_cap_eq12(streamvel, streamwidth, streamdepth);   // kg/s/m
-  mass_bedload[hh]   = streamwidth * q_bedload_eq12; 
+    // kg/m3 * m(width) * [m3/s / m (width)]
+    mass_suspended[hh] += (fraction_groups[size_group]) * streamwidth * calc_suspended_transport_cap(diam50_groups[size_group], diam90_groups[size_group], streamvel, streamwidth, streamdepth);  // kg/s
+
+    // The 'per meter' in q_bedload is per unit width of channel (cross-section)
+    double q_bedload_eq12 = calc_bedload_transport_cap_eq12(diam50_groups[size_group], diam90_groups[size_group], streamvel, streamwidth, streamdepth);   // kg/s/m
+    mass_bedload[hh]   += (fraction_groups[size_group]) * streamwidth * q_bedload_eq12; 
+  }
 
   // convert kg/s to g/int
   if ((variation == VARIATION_0) || (variation == VARIATION_1)) {
-    return (1.0f - scf_All[0][hh]) * ( mass_suspended[hh] + mass_bedload[hh] ) * 1000.0 * 86400.0 / Global::Freq;
+    return (1.0 - scf_All[0][hh]) * ( mass_suspended[hh] + mass_bedload[hh] ) * 1000.0 * 86400.0 / Global::Freq;
   }
   if (variation == VARIATION_2) {
-    return (1.0f - scf_netroute[hh]) * ( mass_suspended[hh] + mass_bedload[hh] ) * 1000.0 * 86400.0 / Global::Freq;
+    return (1.0 - scf_netroute[hh]) * ( mass_suspended[hh] + mass_bedload[hh] ) * 1000.0 * 86400.0 / Global::Freq;
   }
 }
 
@@ -416,12 +437,6 @@ void ClassSed_Channelized::initialize_VANRIJN() {
   
   for (long hh = 0; hh < nhru; ++hh) {
     pct_sand[hh] = 100 - (pct_silt[hh] + pct_clay[hh]);
-    diam50[hh] = 1e-3 * calc_vcsi_diam_percentile(50, pct_sand[hh], pct_silt[hh]);  // mm -> m
-    diam90[hh] = 1e-3 * calc_vcsi_diam_percentile(90, pct_sand[hh], pct_silt[hh]);  // mm -> m
-    /*
-    diam_nodim[hh] = calc_nodim_diam(diam50[hh]);
-    tau_crit_nodim[hh] = calc_critical_shear_stress_nodim_VANRIJN(diam_nodim[hh]);
-    */
 
     if (channel_slope[hh] <= 0.0) {
       CRHMException TExcept("Sed_channelized: channel slope must be greater than zero", TExcept::TERMINATE);

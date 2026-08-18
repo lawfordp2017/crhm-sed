@@ -55,7 +55,7 @@ void ClassSed_Overland::decl(void) {
 
   declstatvar("sedrelpool", TDim::NHRU, "sediment stored in conceptual storage pool", "(g/m^2)", &sedrelpool);
 
-// Vars for the modified MMF formulation
+// This var is determined from silt and clay percentages, so not a parameter
   declstatvar("pct_sand", TDim::NHRU, "Calculated percentage of soil as sand", "(%)", &pct_sand);
 
   declstatvar("v_std_bare",TDim::NHRU, "surface velocity for the standard bare soil condition", "(m/s)", &v_std_bare);
@@ -75,6 +75,10 @@ void ClassSed_Overland::decl(void) {
   declstatvar("sed_delivered_z",  TDim::NHRU, "Flow mobilized sediment", "(g/m^2)", &sed_delivered_z);
   declstatvar("sed_transported_z",  TDim::NHRU, "Flow mobilized sediment", "(g/m^2)", &sed_transported_z);
 
+  declstatvar("conc_soil_rechr", TDim::NDEFN, "Dummy variable to fulfill netroute requirements", "(mg/l)", 
+                &conc_soil_rechr, &conc_soil_rechr_lay, numsubstances);
+  declstatvar("conc_soil_lower", TDim::NDEFN, "Dummy variable to fulfill netroute requirements", "(mg/l)", 
+                &conc_soil_lower, &conc_soil_lower_lay, numsubstances);
 
 /*******************
  * PARAMETERS
@@ -143,6 +147,12 @@ void ClassSed_Overland::decl(void) {
 
 void ClassSed_Overland::init(void) {
   initialize_modMMF();
+
+  for(hh=0; hh<nhru; ++hh) {
+    for(int Sub=0; Sub < numsubstances; Sub++) {
+      conc_soil_lower_lay[Sub][hh];
+    }
+  }
 }
 
 #define SED_CHANNEL 0

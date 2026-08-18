@@ -70,6 +70,8 @@ double bedload_gamma = 0.5;
         double streamdepth);   // m
 
     double calc_mobility_parameter( 
+        double diam50_t,
+        double diam90_t,
         double streamvel,   // m/s
         double streamdepth);  // m
 /*****************************************************************
@@ -87,12 +89,18 @@ double bedload_gamma = 0.5;
     // double calc_dim_bed_flux( double bed_flux_nodim );
     // double VANRIJN( double tau_b_nodim , double tau_crit_nodim, double diam_nodim );
 
-    double calc_bedload_transport_cap_eq10(  double streamvel,   // m/s
+    double calc_bedload_transport_cap_eq10( 
+                                        double diam50_t,      // m
+                                        double diam90_t,      // m
+                                        double streamvel,     // m/s
                                         double streamwidth,   // m
-                                        double streamdepth   // m
+                                        double streamdepth    // m
     );
-    double calc_bedload_transport_cap_eq12(  double streamvel,   // m/s
-                                        double streamwidth,   // m
+    double calc_bedload_transport_cap_eq12(
+                                        double diam50_t,     // m
+                                        double diam90_t,     // m
+                                        double streamvel,    // m/s
+                                        double streamwidth,  // m
                                         double streamdepth   // m
     );
 
@@ -110,7 +118,10 @@ double bedload_gamma = 0.5;
     // double calc_vr_phi_factor(double fallvel, double shearvel, double ref_conc);
     // double calc_vr_susp_param(double transport_stage, double shearvel, double ref_conc);
     // double calc_vr_f_factor(double ref_level, double ref_conc, double streamdepth, double transport_stage);
-    double calc_suspended_transport_cap(double streamvel, double streamwidth, double streamdepth);
+    double calc_suspended_transport_cap(
+        double diam50_t,        // m
+        double diam90_t,        // m
+        double streamvel, double streamwidth, double streamdepth);
 
     /*****************************************************************
      * van Rijn Miscellaneous Routines

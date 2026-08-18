@@ -43,8 +43,8 @@ double** conc_soil_moist_lay{ NULL };
 double* soil_lower{ NULL };
 double* soil_lower_conc{ NULL };
 double** soil_lower_conc_lay{ NULL };
-double* conc_soil_lower{ NULL };
-double** conc_soil_lower_lay{ NULL };
+//double* conc_soil_lower{ NULL };
+//double** conc_soil_lower_lay{ NULL };
 
 double *soil_gw{ NULL };
 double* soil_gw_conc{ NULL };

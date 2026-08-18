@@ -148,8 +148,8 @@ void ClassSedSoil::decl(void) {
     declputvar("*", "conc_soil_rechr", "(mg/l)", &conc_soil_rechr, &conc_soil_rechr_lay);
 
     declstatvar("soil_lower", TDim::NHRU, "moisture content of lower soil profile to the depth"//
-        "of the rooting zone of the major vegetation type on the HRU. (N.B. not Hype lower layer)", "(mm)", &soil_lower);
-    declputvar("*", "conc_soil_lower", "(mg/l)", &conc_soil_lower, &conc_soil_lower_lay);
+         "of the rooting zone of the major vegetation type on the HRU. (N.B. not Hype lower layer)", "(mm)", &soil_lower);
+    // declputvar("*", "conc_soil_lower", "(mg/l)", &conc_soil_lower, &conc_soil_lower_lay);
 
     decllocal("cum_hru_condense", TDim::NHRU, "cumulative condensation over HRU.", "(mm)", &cum_hru_condense);
 
@@ -395,7 +395,7 @@ void ClassSedSoil::init(void) {
             redirected_residual_conc_lay[Sub][hh] = 0.0;
             soil_moist_conc_lay[Sub][hh] = 0.0;
             conc_soil_rechr_lay[Sub][hh] = 0.0;
-            conc_soil_lower_lay[Sub][hh] = 0.0;
+//            conc_soil_lower_lay[Sub][hh] = 0.0;
             gw_conc_lay[Sub][hh] = 0.0;
             soil_gw_conc_lay[Sub][hh] = 0.0;
             soil_ssr_conc_lay[Sub][hh] = 0.0;

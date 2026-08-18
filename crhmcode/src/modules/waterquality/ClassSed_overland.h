@@ -97,6 +97,12 @@ class ClassSed_Overland : public ClassModule {
 // Vars for the HYPE delay pool
     double *sedrelpool{ NULL }; // (Particulate P release from soil due to erosion (g/m^2)
 
+// Dummy variables
+    double *conc_soil_rechr{ NULL };   // concentration of contaminant (always zero, added to support interfacing to WQ_netroute)
+    double **conc_soil_rechr_lay{ NULL };
+    double *conc_soil_lower{ NULL };   // concentration of contaminant (always zero, added to support interfacing to WQ_netroute)
+    double **conc_soil_lower_lay{ NULL };
+   
 /*******************
  * PARAMETERS
  *******************/
