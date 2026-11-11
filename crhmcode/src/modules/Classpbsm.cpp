@@ -130,6 +130,8 @@ void Classpbsm::decl(void) {
 
   declparam("hru_area", TDim::NHRU, "[1]", "1e-6", "1e+09", "hru area", "(km^2)", &hru_area);
 
+  declparam("evap_cutoff_swe", TDim::NHRU, "[0.0]", "0.0", "1000.0", "snow water equivalent above which evaporation is inhibited", "(mm)", &evap_cutoff_swe);
+
   decldiagparam("inhibit_evap", TDim::NHRU, "[0]", "0", "1", "inhibit evaporatation(System use only), 1 -> inhibit", "()", &inhibit_evap);
 
   decldiagparam("inhibit_bs", TDim::NHRU, "[0]", "0", "1", "inhibit blowing snow, 1 -> inhibit", "()", &inhibit_bs);
@@ -659,12 +661,17 @@ void Classpbsm::run(void) {
     for (hh = 0; chkStruct(); ++hh) { // snow cover inhibits evaporation
 
       if(SWE[hh] > 0.0){
-        const_cast<long*> (inhibit_evap)[hh] = 1;
         snowdepth[hh] = Common::DepthofSnow(SWE[hh]);
       }
       else{
-        const_cast<long*> (inhibit_evap)[hh] = 0;
         snowdepth[hh] = 0.0;
+      }
+
+      if(SWE[hh] > evap_cutoff_swe[hh]){ // SWE above the cutoff inhibits evaporation
+        const_cast<long*> (inhibit_evap)[hh] = 1;
+      }
+      else{
+        const_cast<long*> (inhibit_evap)[hh] = 0;
       }
     } // end for (hh)
 }
